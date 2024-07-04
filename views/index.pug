@@ -1,0 +1,35 @@
+doctype html
+html
+  head
+    title Ratings Reviews
+  body
+    h1 Submit a New Rating
+    form(action='/submit-rating', method='POST')
+      label(for='comment') Comment:
+      input(type='text', name='comment', required=true)
+
+      label(for='rating') Rating:
+      input(type='number', name='rating', required=true)
+
+      label(for='module_id') Module:
+      input(type='number', name='module_id', required=true)
+
+      label(for='prof_id') Professor:
+      input(type='number', name='prof_id', required=true)
+
+      label(for='sem_id') Semester ID:
+      input(type='number', name='sem_id', required=true)
+
+      button(type='submit') Submit Rating
+
+    h1 Ratings Data
+    ul
+      each rating in ratings
+        li
+          p Rating ID: #{rating.rating_id}
+          p Rating: #{rating.rating}
+          p Module ID: #{rating.module_id}
+          p Prof ID: #{rating.prof_id}
+          p Comment: #{rating.comment}
+          p Semester ID: #{rating.sem_id}
+          p Timestamp: #{rating.created_at}

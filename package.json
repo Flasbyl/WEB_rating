@@ -1,0 +1,22 @@
+{
+    "type": "module",
+    "name": "module-review-hslu",
+    "version": "1.0.0",
+    "description": "webentwicklung fuer alle projekt, bewertungssystem fuer module und dozenten",
+    "main": "app.js",
+    "scripts": {
+        "start": "node app.js"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.43.4",
+        "bcrypt": "^5.1.1",
+        "dotenv": "^16.4.5",
+        "express": "^4.17.1",
+        "express-session": "^1.18.0",
+        "pug": "^3.0.2",
+        "supabase": "^1.165.0"
+    },
+    "author": "Laurence Flasby, Lionel  Vuichard",
+    "license": "ISC",
+    "keywords": []
+}

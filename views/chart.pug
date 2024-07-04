@@ -1,0 +1,60 @@
+doctype html
+html
+  head
+    title Ratings Chart
+    script(src='https://cdn.jsdelivr.net/npm/chart.js')
+  body
+    h1 Rating Analysis
+    canvas#ratingChart(width='800', height='400')
+    script.
+      const ctx = document.getElementById('ratingChart').getContext('2d');
+      const ratingData = JSON.parse('!{ratingData}');
+
+      // Ensure all x-values are numbers
+      ratingData.scatter.forEach(d => d.x = Number(d.x));
+      ratingData.curve.forEach(d => d.x = Number(d.x));
+
+      const mixedChart = new Chart(ctx, {
+          type: 'scatter', // Base type is scatter to allow numerical x-axis
+          data: {
+              datasets: [{
+                  type: 'scatter',
+                  label: 'Individual Ratings',
+                  data: ratingData.scatter,
+                  backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                  borderColor: 'rgba(255, 99, 132, 1)',
+                  showLine: false // Ensure no line is drawn for scatter points
+              }, {
+                  type: 'line',
+                  label: 'Average Ratings',
+                  data: ratingData.curve,
+                  backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                  borderColor: 'rgba(54, 162, 235, 1)',
+                  fill: false // Line chart does not fill under the line
+              }]
+          },
+          options: {
+              scales: {
+                  x: {
+                      type: 'linear',
+                      position: 'bottom',
+                      title: {
+                          display: true,
+                          text: 'Semester ID'
+                      }
+                  },
+                  y: {
+                      title: {
+                          display: true,
+                          text: 'Rating'
+                      }
+                  }
+              },
+              plugins: {
+                  legend: {
+                      display: true,
+                      position: 'top'
+                  }
+              }
+          }
+      });

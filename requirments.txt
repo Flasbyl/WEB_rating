@@ -1,0 +1,6 @@
+npm install dotenv
+npm install pug-cli -g
+npm install @supabase/supabase-js
+npm install nodemon -g
+npm install express-session bcrypt @supabase/supabase-js dotenv
+npm install express-session

@@ -1,0 +1,5 @@
+run "npm install" after editing
+run "nodemon app.js"
+saving files while nodemon is running will automatically update the web page
+
+hashPasswords.js hashes all passwords in the users table
