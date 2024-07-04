@@ -36,6 +36,10 @@ app.use(session({
     cookie: { secure: false }
 }));
 
+// Redirect root URL to /layout
+app.get('/', (req, res) => {
+    res.redirect('/layout');
+});
 
 app.get('/register', (req, res) => {
     res.render('register');
