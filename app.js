@@ -17,15 +17,16 @@ import {
 import express from 'express';
 import session from 'express-session';
 import bcrypt from 'bcrypt';
+import path from 'path'; // Ensure path is imported
 
 const app = express();
 
 // Set Pug as the view engine
 app.set('view engine', 'pug');
-app.set('views', './views');
+app.set('views', path.join(__dirname, 'views')); // Ensure correct path to views directory
 
 // Middleware to serve static files from 'public' directory
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public'))); // Ensure correct path to public directory
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -45,12 +46,11 @@ app.get('/register', (req, res) => {
     res.render('register');
 });
 
-
 app.post('/register', async (req, res) => {
-    const {username, email, password } = req.body;
+    const { username, email, password } = req.body;
     try {
         await registerUser(username, email, password);
-        res.send('User registered sucessfully');
+        res.send('User registered successfully');
     } catch (error) {
         console.error('Error registering user:', error);
         res.status(500).send('Error registering user');
@@ -73,15 +73,18 @@ app.post('/login', async (req, res) => {
     }
 });
 
-
 app.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/layout');
 });
 
-
-app.get('/layout', async (req, res) => { 
-    res.render('layout', { user: req.session.user }); 
+app.get('/layout', async (req, res) => {
+    try {
+        res.render('layout', { user: req.session.user });
+    } catch (error) {
+        console.error('Error rendering layout:', error);
+        res.status(500).send('Internal Server Error');
+    }
 });
 
 // get professors
@@ -180,8 +183,7 @@ app.get('/chart', async (req, res) => {
     }
 });
 
-
-//get semesters
+// get semesters
 app.get('/semester', async (req, res) => {
     try {
         const semesterData = await fetchSemesters();
@@ -193,7 +195,7 @@ app.get('/semester', async (req, res) => {
     }
 });
 
-//post new rating to sql db
+// post new rating to sql db
 app.post('/submit-rating', async (req, res) => {
     if (!req.session.user) {
         return res.status(401).send('Please login to submit ratings');
@@ -208,7 +210,6 @@ app.post('/submit-rating', async (req, res) => {
         res.status(500).send('Error submitting rating');
     }
 });
-
 
 // Start the server
 const PORT = process.env.PORT || 3000;
