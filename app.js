@@ -19,6 +19,12 @@ import session from 'express-session';
 import bcrypt from 'bcrypt';
 import path from 'path'; // Ensure path is imported
 
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const app = express();
 
 // Set Pug as the view engine
