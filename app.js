@@ -43,9 +43,9 @@ app.use(session({
     cookie: { secure: false }
 }));
 
-// Redirect root URL to /layout
+// Redirect root URL to /home
 app.get('/', (req, res) => {
-    res.redirect('/layout');
+    res.redirect('/home');
 });
 
 app.get('/register', (req, res) => {
@@ -72,7 +72,7 @@ app.post('/login', async (req, res) => {
     try {
         const user = await loginUser(username, password);
         req.session.user = user;
-        res.redirect('/layout');
+        res.redirect('/home');
     } catch (error) {
         console.error('Error logging in user:', error);
         res.status(500).send('Invalid credentials');
@@ -81,14 +81,14 @@ app.post('/login', async (req, res) => {
 
 app.get('/logout', (req, res) => {
     req.session.destroy();
-    res.redirect('/layout');
+    res.redirect('/home');
 });
 
-app.get('/layout', async (req, res) => {
+app.get('/home', async (req, res) => {
     try {
-        res.render('layout', { user: req.session.user });
+        res.render('home', { user: req.session.user });
     } catch (error) {
-        console.error('Error rendering layout:', error);
+        console.error('Error rendering home:', error);
         res.status(500).send('Internal Server Error');
     }
 });
@@ -211,7 +211,7 @@ app.post('/submit-rating', async (req, res) => {
     console.log('body app.js line 199:', req.body)
     try {
         await addRating(comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden);
-        res.redirect('/layout');
+        res.redirect('/home');
     } catch (err) {
         res.status(500).send('Error submitting rating');
     }

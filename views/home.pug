@@ -7,6 +7,11 @@ html
     script(src='https://cdn.jsdelivr.net/npm/chart.js')
   body
     .grid-container
+      .topbar
+        span#dataVisualizationHeading <!-- Empty span for title -->
+        a(href='/login') Login
+        a(href='/register') Register
+
       .sidebar
         h2 Technik & Architektur
         h2 Select Category
@@ -14,57 +19,52 @@ html
           option(value="") Select
           option(value="professor") Professor
           option(value="module") Module
+
         p Select Professor/Module:
-        select(id="firstDropdown", onchange="updateSecondDropdown()")
+        input(type="text" id="firstDropdownSearch" placeholder="Search..." oninput="filterDropdown('firstDropdown', this.value)")
+        select(id="firstDropdown" onchange="updateSecondDropdown()")
           option(value="") Make selection
+
         p Select Related:
-        select(id="secondDropdown", onchange="loadChart()")
+        input(type="text" id="secondDropdownSearch" placeholder="Search..." oninput="filterDropdown('secondDropdown', this.value)")
+        select(id="secondDropdown" onchange="loadChart()")
           option(value="") Make selection
 
       .display-area
-        if !user
-          a(href='/login') Login 
-          a(href='/register') Register 
-        else 
-          a(href='/logout') Logout 
 
-        h1 Data Visualization
-        
         canvas#ratingChart(width='800', height='400', onload="loadChart()")
 
         p Add Rating:
-        if !user
-          p You must be logged in to submit a rating.
-        else 
-          form(action='/submit-rating', method='POST')
-            label(
-              for='comment'
-              ) Comment:
-            input(
-              type='text', 
-              name='comment', 
-              required=true
-              )
+        p You must be logged in to submit a rating.
 
-            label(for='rating') Rating:
-            input(
-              type='number', 
-              name='rating', 
-              required=true
-              )
+        form(action='/submit-rating', method='POST')
+          label(for='comment') Comment:
+          input(type='text', name='comment', required=true)
 
-            label(for='sem_id') Semester:
-            select(id='sem_id')
-              option(value='') select semester 
+          label(for='rating') Rating:
+          select(name='rating', required=true)
+            option(value='') Select Rating
+            each value in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+              option(value=value) #{value}
 
-            input(type='hidden', name='prof_id_hidden', id='prof_id_hidden')
-            input(type='hidden', name='module_id_hidden', id='module_id_hidden')
-            input(type='hidden', name='sem_id_hidden', id='sem_id_hidden')
+          label(for='sem_id') Semester:
+          select(id='sem_id')
+            option(value='') select semester 
 
-            button(type='submit') Submit Rating
+          input(type='hidden', name='prof_id_hidden', id='prof_id_hidden')
+          input(type='hidden', name='module_id_hidden', id='module_id_hidden')
+          input(type='hidden', name='sem_id_hidden', id='sem_id_hidden')
+
+          button(type='submit') Submit Rating
+
 
     script.
       let chartInstance = null;
+      let originalOptions = {
+        firstDropdown: [],
+        secondDropdown: []
+      };
+
       document.addEventListener('DOMContentLoaded', function() {
         loadSemester();
       });
@@ -72,10 +72,13 @@ html
       function toggleSelection() {
         const category = document.getElementById('categorySelector').value;
         if (!category) return;  // Do nothing if the default option is selected
+
         axios.get(`/${category}s`)
           .then(function(response) {
             const dropdown = document.getElementById('firstDropdown');
             dropdown.innerHTML = '<option value="">Make selection</option>';  // Clear existing options and add default
+            originalOptions.firstDropdown = response.data;  // Store original list
+
             response.data.forEach(item => {
               const option = new Option(item.name, item.id);
               dropdown.appendChild(option);
@@ -89,27 +92,37 @@ html
       function updateSecondDropdown() {
         const firstDropdown = document.getElementById('firstDropdown');
         const selectedId = firstDropdown.value;
-        console.log('line 97 layout.pug: firstDropdownvalue:', selectedId);
         if (!selectedId) return;  // Do nothing if the default option or no option is selected
+
         const category = document.getElementById('categorySelector').value;
         const relatedType = category === 'professor' ? 'module' : 'professor';
-        console.log('line 101 layout.pug: category:', relatedType);
 
-        console.log(`line 103 layout.pug: Fetching related ${relatedType} for ${selectedId}`);
         axios.get(`/relations/${relatedType}/${selectedId}`)
           .then(function(response) {
-            console.log(`Received data for ${relatedType}:`, response.data); // Debug log
             const secondDropdown = document.getElementById('secondDropdown');
             secondDropdown.innerHTML = '<option value="">Make selection</option>';  // Clear existing options and add default
+            originalOptions.secondDropdown = response.data;  // Store original list
+
             response.data.forEach(item => {
               const option = new Option(item.name, item.id);
               secondDropdown.appendChild(option);
             });
-            console.log('line 113 layout.pug: secondDropdownvalue:', secondDropdown);
           })
           .catch(function(error) {
-            console.error(`Error updating second dropdown with ${relatedType} related data:`, error);
+            console.error(`Error updating second dropdown:`, error);
           });
+      }
+
+      function filterDropdown(dropdownId, searchTerm) {
+        const dropdown = document.getElementById(dropdownId);
+        const originalList = originalOptions[dropdownId];
+        const filteredList = originalList.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        dropdown.innerHTML = '<option value="">Make selection</option>';
+        filteredList.forEach(item => {
+          const option = new Option(item.name, item.id);
+          dropdown.appendChild(option);
+        });
       }
 
       function loadChart() {
@@ -117,18 +130,18 @@ html
         const firstId = document.getElementById('firstDropdown').value;
         const secondId = document.getElementById('secondDropdown').value;
         if (!category || !firstId || !secondId) return;
+        
+        const dataVisualizationHeading = document.getElementById('dataVisualizationHeading');
+          dataVisualizationHeading.textContent = secondId;
 
         axios.get(`/chart?category=${category}&firstId=${firstId}&secondId=${secondId}`)
           .then(function(response) {
             const ctx = document.getElementById('ratingChart').getContext('2d');
             const { ratingData, profIdValue, moduleIdValue } = response.data;
-            
-            console.log('response line 124', response.data)
-            console.log('line 124 layout.pug: profIdValue, moduleIdValue:', profIdValue, moduleIdValue);
+
             document.getElementById('prof_id_hidden').value = profIdValue;
             document.getElementById('module_id_hidden').value = moduleIdValue;
 
-            // destroy existing charts
             if (chartInstance) {
               chartInstance.destroy();
             }
@@ -191,22 +204,22 @@ html
         axios.get('/semester')
           .then(function(response) {
             const dropdown = document.getElementById('sem_id');
-            const selectedValue = dropdown.value;  // Save the current selected value
-            dropdown.innerHTML = '<option value="">Select Semester</option>'; // Clear existing options and add default
+            const selectedValue = dropdown.value;
+            dropdown.innerHTML = '<option value="">Select Semester</option>';
             response.data.forEach(semester => {
               const option = new Option(semester.sem_name, semester.sem_id);
               dropdown.appendChild(option);
             });
-            dropdown.value = selectedValue;  // Restore the selected value
-            document.getElementById('sem_id_hidden').value = selectedValue;  // Update hidden input
-          console.log('loadSemester is doing things')
+            dropdown.value = selectedValue;
+            document.getElementById('sem_id_hidden').value = selectedValue;
           })
           .catch(function(error) {
             console.error('Error loading semesters:', error);
-          }); 
+          });
+
         const dropdown = document.getElementById('sem_id');
         dropdown.addEventListener('change', function() {
           const selectedValue = dropdown.value;
-          document.getElementById('sem_id_hidden').value = selectedValue;  // Update hidden input when selection changes
+          document.getElementById('sem_id_hidden').value = selectedValue;
         });
       }

@@ -6,15 +6,61 @@ body, html {
 
 .grid-container {
   display: grid;
-  grid-template-columns: 1fr 4fr; /* Sidebar takes 1/5 and main area takes 4/5 */
+  grid-template-columns: 1fr 5fr; /* Sidebar takes 1/5 and main area takes 4/5 */
+  grid-template-rows: auto 1fr;   /* Top bar is auto-height and content fills remaining height */
   gap: 10px;
-  height: 100vh;
+  height: 100vh; /* Full viewport height */
+  overflow-y: auto; /* Ensures the content can scroll */
+}
+
+
+.topbar {
+  display: flex;
+  justify-content: space-between;  /* Spread items between the left and right */
+  align-items: center;             /* Vertically center the content */
+  padding: 10px 20px;
+  background-color: #f4f4f4;
+  border-bottom: 1px solid #ccc;
+  border-left: 1px solid #ccc;
+  height: 40px;                    /* Set height for the topbar */
+  position: sticky;
+  top: 0px;
+  z-index: 3;           /* Make sure the topbar stays above content */
+}
+
+#dataVisualizationHeading {
+  font-weight: bold;
+  font-size: 18px;
+  margin-right: auto;              /* Ensures title stays on the left */
+}
+
+.topbar a {
+  margin-left: 10px;               /* Adds space between Login and Register */
 }
 
 .sidebar {
+  grid-row: 1 / span 2;          /* Sidebar spans both rows in the grid */
   padding: 20px;
   border: 1px solid #ccc;
   background-color: #f4f4f4;
+  position: sticky;
+  top: 0px;
+  height: 100vh;                 /* Ensure sidebar takes the full height of the viewport */
+  overflow-y: auto;              /* Sidebar can scroll internally if needed */
+  z-index: 2;                    /* Ensure the sidebar stays above content but below topbar */
+  box-sizing: border-box;        /* Ensure padding and border are included in the total height */
+}
+
+
+.sidebar input {
+  display: block;
+  width: 67.5%;
+  margin-bottom: 5px;
+}
+.sidebar select {
+  display: block;
+  width: 70%;
+  margin-bottom: 5px;
 }
 
 .main-area {
@@ -27,6 +73,7 @@ body, html {
   padding: 20px;
   border: 1px solid #ccc;
   background-color: #e8e8e8;
+  overflow-y: auto; /* Scrollable display area */
 }
 
 .sidebar > * {
