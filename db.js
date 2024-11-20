@@ -262,6 +262,47 @@ async function registerUser(username, email, password) {
     return data;
 }
 
+async function updateUser(userId, updates) {
+    const { data, error } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', userId);
+
+    if (error) {
+        console.error('Error updating user:', error);
+        throw error;
+    }
+    return data;
+}
+
+async function resetPassword(userId, currentPassword, newPassword) {
+    const { data: user, error } = await supabase
+        .from('users')
+        .select('password_hash')
+        .eq('id', userId)
+        .single();
+
+    if (error || !user) {
+        console.error('Error fetching user for password reset:', error);
+        return false;
+    }
+
+    const match = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!match) return false;
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    const { error: updateError } = await supabase
+        .from('users')
+        .update({ password_hash: newPasswordHash })
+        .eq('id', userId);
+
+    if (updateError) {
+        console.error('Error updating password:', updateError);
+        throw updateError;
+    }
+
+    return true;
+}
 
 export {
     addRating,
@@ -273,5 +314,7 @@ export {
     fetchProfModRelations,
     fetchModProfRelations,
     loginUser,
-    registerUser
+    registerUser,
+    updateUser,
+    resetPassword
 };

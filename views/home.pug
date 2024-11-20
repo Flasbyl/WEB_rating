@@ -9,8 +9,12 @@ html
     .grid-container
       .topbar
         span#dataVisualizationHeading <!-- Empty span for title -->
-        a(href='/login') Login
-        a(href='/register') Register
+        if user
+          a(href='/profile') Profile
+          a(href='/logout') Logout
+        else
+          a(href='/login') Login
+          a(href='/register') Register
 
       .sidebar
         h2 Technik & Architektur

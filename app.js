@@ -7,11 +7,13 @@ import {
     fetchProfessors,
     fetchModules,
     fetchDepartments,
+    fetchSemesters,
     fetchProfModRelations,
     fetchModProfRelations,
     loginUser,
     registerUser,
-    fetchSemesters
+    updateUser,
+    resetPassword
 } from './db.js';
 
 import express from 'express';
@@ -199,6 +201,34 @@ app.get('/semester', async (req, res) => {
         console.error('Error fetching semesters:', error);
         res.status(500).send('Error fetching semesters');
     }
+});
+
+app.get('/profile', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    res.render('profile', { user: req.session.user });
+});
+
+app.get('/profile/password', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    res.render('password', { user: req.session.user });
+});
+
+app.get('/profile/preferences', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    res.render('preferences', { user: req.session.user });
+});
+
+app.get('/profile/placeholder', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    res.render('placeholder', { user: req.session.user });
 });
 
 // post new rating to sql db

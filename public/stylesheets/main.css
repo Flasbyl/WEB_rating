@@ -69,6 +69,42 @@ body, html {
   background-color: #fff;
 }
 
+.main-area h1, h2 {
+  margin-top: 0;
+}
+
+.main-area form {
+  margin-bottom: 20px;
+}
+
+.main-area form label {
+  display: block;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.main-area form input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.main-area form button {
+  padding: 10px 20px;
+  background-color: #007BFF;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.main-area form button:hover {
+  background-color: #0056b3;
+}
+
+
 .display-area {
   padding: 20px;
   border: 1px solid #ccc;

@@ -1,0 +1,48 @@
+doctype html
+html
+  head
+    title User Profile
+    link(rel='stylesheet', href='/stylesheets/main.css')
+  body
+    .grid-container
+      .topbar
+        span#dataVisualizationHeading User Profile
+        a(href='/home') Back to Home
+        a(href='/logout') Logout
+
+      .side-bar
+        li: a(href='/profile') General Settings
+        li: a(href='/profile/password') Change Password
+        li: a(href='/profile/preferences') Manage Preferences
+        li: a(href='/profile/placeholder') Nothing to see here yet
+
+      .main-area
+        h1 Welcome, #{user.username}
+        form(action='/profile/update' method='POST')
+          label(for='username') Username:
+          input(type='text' name='username' value=user.username required)
+
+          label(for='email') Email:
+          input(type='email' name='email' value=user.email required)
+
+          label(for='anonymous') Visibility:
+          input(type='checkbox' name='anonymous' checked=user.anonymous)
+
+          button(type='submit') Update Profile
+
+        form(action='/profile/reset-password' method='POST')
+          h2 Reset Password
+          label(for='current_password') Current Password:
+          input(type='password' name='current_password' required)
+
+          label(for='new_password') New Password:
+          input(type='password' name='new_password' required)
+
+          label(for='confirm_password') Confirm New Password:
+          input(type='password' name='confirm_password' required)
+
+          button(type='submit') Reset Password
+
+        if user.isAdmin
+          h2 Admin Tools
+          a(href='/admin') Go to Admin Panel
