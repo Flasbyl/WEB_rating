@@ -1,0 +1,11 @@
+extends base
+
+block mainContent
+  h1 Review Summary
+  p Thank you for submitting your rating!
+
+  h3 Selections:
+  ul
+    li Category: #{category || 'Not selected'}
+    li Professor/Module: #{prof_id || 'Not selected'}
+    li Related: #{mod_id || 'Not selected'}
