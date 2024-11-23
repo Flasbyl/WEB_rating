@@ -1,0 +1,862 @@
+Filename: app.js
+Content:
+import dotenv from 'dotenv';
+dotenv.config();
+
+import {
+    addRating,
+    fetchRatings,
+    fetchProfessors,
+    fetchModules,
+    fetchDepartments,
+    fetchSemesters,
+    fetchProfModRelations,
+    fetchModProfRelations,
+    loginUser,
+    registerUser,
+    resetPassword,
+    updateUserProfile,
+    updatePassword,
+    updatePreferences,
+    fetchRatingHistory,
+    deleteUserAccount,
+    fetchUserPreferences,
+    updateUserPreferences,
+    fetchActivityLogs
+} from './db.js';
+
+import express from 'express';
+import session from 'express-session';
+import bcrypt from 'bcrypt';
+import path from 'path'; // Ensure path is imported
+
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const app = express();
+
+// Set Pug as the view engine
+app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'views')); // Ensure correct path to views directory
+
+// Middleware to serve static files from 'public' directory
+app.use(express.static(path.join(__dirname, 'public'))); // Ensure correct path to public directory
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+import { logActivity } from './db.js'; // Assume this function saves activity data to the database
+
+app.use(async (req, res, next) => {
+    const activityData = {
+        user_id: req.session?.user?.user_id || null,
+        username: req.session?.user?.username || null,
+        timestamp: new Date().toISOString(),
+        http_method: req.method,
+        url: req.originalUrl,
+        ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+        user_agent: req.headers['user-agent'],
+    };
+
+    try {
+        await logActivity(activityData);
+        console.log(`[Activity Logged]: ${JSON.stringify(activityData)}`);
+    } catch (err) {
+        console.error('Failed to log activity:', err);
+    }
+    next();
+});
+
+
+app.use(session({
+    secret: process.env.SECRET_KEY,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false }
+}));
+
+app.get('/profile', (req, res) => {
+    const user = req.session.user;
+    if (!user) {
+        return res.redirect('/login');
+    }
+    res.render('general', { user, activeTab: 'general' });
+});
+
+app.post('/profile/update', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).send('You must be logged in to update your profile.');
+    }
+
+    const { username, email, visibility } = req.body;
+    try {
+        const userId = req.session.user.id;
+        const { error } = await supabase
+            .from('users')
+            .update({ username, email, visibility })
+            .eq('id', userId);
+
+        if (error) throw error;
+
+        // Update the session with new user data
+        req.session.user = { ...req.session.user, username, email, visibility };
+        res.redirect('/profile');
+    } catch (err) {
+        console.error('Error updating profile:', err);
+        res.status(500).send('Error updating profile');
+    }
+});
+
+app.get('/profile/password', (req, res) => {
+    res.render('password', { activeTab: 'password' });
+});
+
+app.post('/profile/password', async (req, res) => {
+    const { current_password, new_password } = req.body;
+    try {
+        await updatePassword(req.session.user.id, current_password, new_password);
+        res.redirect('/profile/password');
+    } catch (error) {
+        console.error('Error updating password:', error);
+        res.status(500).send('Error updating password');
+    }
+});
+
+app.get('/profile/preferences', async (req, res) => {
+    const user = req.session.user;
+    if (!user) {
+        return res.redirect('/login');
+    }
+
+    const preferences = await fetchUserPreferences(user.id);
+    res.render('preferences', { user, activeTab: 'preferences', preferences });
+});
+
+app.post('/profile/preferences', async (req, res) => {
+    const user = req.session.user;
+    if (!user) {
+        return res.redirect('/login');
+    }
+
+    const { dark_mode, email_notifications } = req.body;
+    const preferences = {
+        dark_mode: !!dark_mode,
+        email_notifications: !!email_notifications
+    };
+
+    await updateUserPreferences(user.id, preferences);
+    res.redirect('/profile/preferences');
+});
+
+app.get('/profile/history', async (req, res) => {
+    try {
+        const ratings = await fetchRatingHistory(req.session.user.id);
+        res.render('history', { ratings, activeTab: 'history' });
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        res.status(500).send('Error fetching history');
+    }
+});
+
+app.get('/profile/privacy', (req, res) => {
+    res.render('privacy', { activeTab: 'privacy' });
+});
+
+app.post('/profile/delete', async (req, res) => {
+    try {
+        await deleteUserAccount(req.session.user.id);
+        req.session.destroy();
+        res.redirect('/');
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        res.status(500).send('Error deleting account');
+    }
+});
+
+app.get('/profile/activity', async (req, res) => {
+    const user = req.session.user;
+    if (!user) {
+        return res.redirect('/login');
+    }
+
+    const activityLogs = await fetchActivityLogs(user.id);
+    res.render('activity', { user, activeTab: 'activity', activityLogs });
+});
+
+// Redirect root URL to /home
+app.get('/', (req, res) => {
+    res.redirect('/home');
+});
+
+app.get('/register', (req, res) => {
+    res.render('register');
+});
+
+app.post('/register', async (req, res) => {
+    const { username, email, password } = req.body;
+    try {
+        await registerUser(username, email, password);
+        res.send('User registered successfully');
+    } catch (error) {
+        console.error('Error registering user:', error);
+        res.status(500).send('Error registering user');
+    }
+});
+
+app.get('/login', async (req, res) => {
+    res.render('login', { user: req.session.user });
+});
+
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const user = await loginUser(username, password);
+        req.session.user = user;
+        res.redirect('/home');
+    } catch (error) {
+        console.error('Error logging in user:', error);
+        res.status(500).send('Invalid credentials');
+    }
+});
+
+app.get('/logout', (req, res) => {
+    req.session.destroy();
+    res.redirect('/home');
+});
+
+app.get('/home', async (req, res) => {
+    try {
+        res.render('home', { user: req.session.user });
+    } catch (error) {
+        console.error('Error rendering home:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// get professors
+app.get('/professors', async (req, res) => {
+    try {
+        const professors = await fetchProfessors('*');
+        res.json(professors);
+    } catch (err) {
+        console.error('Failed to fetch professors:', err);
+        res.status(500).send('Failed to load page');
+    }
+});
+
+// get modules
+app.get('/modules', async (req, res) => {
+    try {
+        const modules = await fetchModules('*');
+        res.json(modules);
+    } catch (err) {
+        console.error('Failed to fetch modules:', err);
+        res.status(500).send('Failed to load page');
+    }
+});
+
+// get departments
+app.get('/departments', async (req, res) => {
+    try {
+        const departments = await fetchDepartments();
+        res.json(departments);
+    } catch (err) {
+        console.error('Failed to fetch departments:', err);
+        res.status(500).send('Failed to load page');
+    }
+});
+
+// get Professor Module Relations
+app.get('/relations/professor/:profName', async (req, res) => {
+    try {
+        const relationsPM = await fetchModProfRelations(req.params.profName);
+        res.json(relationsPM);
+    } catch (err) {
+        console.error('Failed to fetch relations:', err);
+        res.status(500).send('Failed to load page');
+    }
+});
+
+// get Module Professor Relations
+app.get('/relations/module/:moduleName', async (req, res) => {
+    try {
+        const relationsMP = await fetchProfModRelations(req.params.moduleName);
+        res.json(relationsMP);
+    } catch (err) {
+        console.error('Failed to fetch relations:', err);
+        res.status(500).send('Failed to load page');
+    }
+});
+
+// get data for graphs
+app.get('/chart', async (req, res) => {
+    const { category, firstId, secondId } = req.query;
+    try {
+        const { data: rawData, profIdValue, moduleIdValue } = await fetchRatings(category, firstId, secondId);
+        console.log('line 143 app.js: ==========chart===========');
+        console.log('line 144 app.js: rawData:', rawData);
+        console.log('line 145 app.js: profIdValue:', profIdValue, 'moduleIdValue:', moduleIdValue);
+        
+        const averages = {};
+        const scatterData = [];
+        const curveData = [];
+
+        rawData.forEach(rating => {
+            scatterData.push({ x: rating.sem_id, y: rating.rating });
+            if (!averages[rating.sem_id]) {
+                averages[rating.sem_id] = { sum: rating.rating, count: 1 };
+            } else {
+                averages[rating.sem_id].sum += rating.rating;
+                averages[rating.sem_id].count++;
+            }
+        });
+
+        for (let sem_id in averages) {
+            curveData.push({
+                x: sem_id,
+                y: averages[sem_id].sum / averages[sem_id].count
+            });
+        }
+
+        const ratingData = { scatter: scatterData, curve: curveData };
+        res.json({ ratingData, profIdValue, moduleIdValue });
+        console.log('line 168 app.js: ratingData:', ratingData);
+        console.log('line 169 app.js: scatterData:', scatterData);
+        console.log('line 170 app.js: curveData:', curveData);
+    } catch (err) {
+        console.error('Failed to fetch ratings:', err);
+        res.status(500).send('Failed to load page');
+    }
+});
+
+// get semesters
+app.get('/semester', async (req, res) => {
+    try {
+        const semesterData = await fetchSemesters();
+        console.log('line 181 app.js: semesterData', semesterData);
+        res.json(semesterData);
+    } catch (error) {
+        console.error('Error fetching semesters:', error);
+        res.status(500).send('Error fetching semesters');
+    }
+});
+
+// post new rating to sql db
+app.post('/submit-rating', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).send('Please login to submit ratings');
+    }
+
+    const { comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden } = req.body;
+    console.log('body app.js line 199:', req.body)
+    try {
+        await addRating(comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden);
+        res.redirect('/home');
+    } catch (err) {
+        res.status(500).send('Error submitting rating');
+    }
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+----------------------------------------
+Filename: db.js
+Content:
+import dotenv from 'dotenv';
+dotenv.config();
+
+import bcrypt from 'bcrypt';
+import {
+    createClient
+} from '@supabase/supabase-js';
+
+const supabaseUrl = 'https://jqnesxzpfsfxzqnudtig.supabase.co';
+const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function fetchProfessors(profName) {
+    try {
+        const { data, error } = await supabase
+            .from('professors')
+            .select(profName);
+
+        if (error) {
+            console.error('Error fetching professors:', error);
+            return [];
+        }
+        console.log('line 23 db.js: Fetched professors:', data[0], '...');
+        return data;
+    } catch (error) {
+        console.error('Unexpected error fetching professors:', error);
+        return [];
+    }
+}
+
+async function fetchModules(moduleName) {
+    try {
+        const { data, error } = await supabase
+            .from('modules')
+            .select(moduleName);
+
+        if (error) {
+            console.error('Error fetching modules:', error);
+            return [];
+        }
+        console.log('line 41 db.js: Fetched modules:', data[0], '...');
+        return data;
+    } catch (error) {
+        console.error('Unexpected error fetching modules:', error);
+        return [];
+    }
+}
+
+async function fetchDepartments() {
+    try {
+        const { data, error } = await supabase
+            .from('departments')
+            .select('*');
+
+        if (error) {
+            console.error('Error fetching departments:', error);
+            return [];
+        }
+        console.log('line 59 db.js: Fetched departments:', data[0], '...');
+        return data;
+    } catch (error) {
+        console.error('Unexpected error fetching departments:', error);
+        return [];
+    }
+}
+
+async function fetchSemesters() {
+    try {
+        const { data, error } = await supabase
+        .from('semester')
+        .select('*');
+
+        if (error) {
+            console.error('Error fetching semesters:', error);
+            return [];
+        }
+        console.log('line 77 db.js: Fetched semesters:', data[0], '...');
+        return data;
+    } catch (error) {
+        console.error('Unexpected error fetching semesters:', error);
+        return [];
+    }
+}
+
+async function fetchProfModRelations(profName) {
+    try {
+        const { data: professorData, error: professorError } = await supabase
+            .from('professors')
+            .select('prof_id')
+            .eq('name', profName);
+
+        if (professorError) {
+            console.error('Error fetching professor data:', professorError);
+            return [];
+        }
+
+        const professorIds = professorData.map(professor => professor.prof_id);
+
+        const { data: relationsData, error: relationsError } = await supabase
+            .from('professors_modules')
+            .select('module_id')
+            .in('prof_id', professorIds);
+
+        if (relationsError) {
+            console.error('Error fetching relations data:', relationsError);
+            return [];
+        }
+
+        const moduleIds = relationsData.map(relation => relation.module_id);
+
+        const { data: modulesData, error: modulesError } = await supabase
+            .from('modules')
+            .select('name, module_id')
+            .in('module_id', moduleIds);
+
+        if (modulesError) {
+            console.error('Error fetching module data:', modulesError);
+            return [];
+        }
+
+        return modulesData;
+    } catch (error) {
+        console.error('Unexpected error fetching relations:', error);
+        return [];
+    }
+}
+
+async function fetchModProfRelations(moduleName) {
+    try {
+        const { data: moduleData, error: moduleError } = await supabase
+            .from('modules')
+            .select('module_id')
+            .eq('name', moduleName);
+
+        if (moduleError) {
+            console.error('Error fetching module data:', moduleError);
+            return [];
+        }
+
+        const moduleIds = moduleData.map(module => module.module_id);
+
+        const { data: relationsData, error: relationsError } = await supabase
+            .from('professors_modules')
+            .select('prof_id')
+            .in('module_id', moduleIds);
+
+        if (relationsError) {
+            console.error('Error fetching relations data:', relationsError);
+            return [];
+        }
+
+        const professorIds = relationsData.map(relation => relation.prof_id);
+
+        const { data: professorsData, error: professorsError } = await supabase
+            .from('professors')
+            .select('name, prof_id')
+            .in('prof_id', professorIds);
+
+        if (professorsError) {
+            console.error('Error fetching professor data:', professorsError);
+            return [];
+        }
+
+        return professorsData;
+    } catch (error) {
+        console.error('Unexpected error fetching relations:', error);
+        return [];
+    }
+}
+
+async function fetchRatings(category, firstId, secondId) {
+
+    console.log('line 173 db.js: 1. category passed:', category, 'profId passed:', firstId, 'moduleId passed:', secondId);
+    
+    let profId, moduleId;
+    if (category === 'professor') {
+        profId = firstId;
+        moduleId = secondId;
+    } else {
+        profId = secondId;
+        moduleId = firstId;
+    }
+
+    console.log('line 184 db.js: 2. category passed:', category, 'profId passed:', profId, 'moduleId passed:', moduleId);
+
+    // Fetch the actual IDs from the professors and modules tables
+    let profIdValue, moduleIdValue;
+    
+    if (profId) {
+        const profData = await fetchProfessors();
+        const prof = profData.find(p => p.name === profId);
+        profIdValue = prof ? prof.prof_id : null;
+    }
+
+    if (moduleId) {
+        const modData = await fetchModules();
+        const module = modData.find(m => m.name === moduleId);
+        moduleIdValue = module ? module.module_id : null;
+    }
+
+    if (!profIdValue || !moduleIdValue) {
+        console.error('Invalid professor or module name provided');
+        return [];
+    }
+
+    console.log('line 206 db.js: 3. Using profIdValue:', profIdValue, 'and moduleIdValue:', moduleIdValue);
+    try {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select('*')
+            .eq('prof_id', profIdValue)
+            .eq('module_id', moduleIdValue);
+
+        if (error) {
+            console.error('Error fetching ratings:', error);
+            return [];
+        }
+        console.log('line 218 db.js: Fetched ratings:', data[0], '...');
+        return { data, profIdValue, moduleIdValue };  // Return as an object
+    } catch (error) {
+        console.error('Unexpected error fetching ratings:', error);
+        return [];
+    }
+}
+
+async function addRating(comment, rating, prof_id, sem_id, module_id) {
+    console.log('line 228: comment:', comment)
+    console.log('line 228: rating:', rating)
+    console.log('line 228: prof hidden:', prof_id)
+    console.log('line 228: sem hidden:', sem_id)
+    console.log('line 228: mod hidden:', module_id)
+
+    const { data, error } = await supabase.from('ratings').insert([{ comment, rating, prof_id, sem_id, module_id}]);
+    console.log('line 229 db.js:', comment, rating, prof_id, sem_id, module_id)
+    if (error) {
+        console.error('Error inserting rating:', error);
+        throw error;
+    }
+    return data;
+}
+
+async function loginUser(username, password) {
+    const { data: user, error } = await supabase.from('users').select('*').eq('username', username).single();
+    if (error || !user) {
+      throw new Error('Invalid credentials');
+    }
+    const match = await bcrypt.compare(password, user.password_hash);
+    if (!match) {
+      throw new Error('Invalid credentials');
+    }
+    return user;
+  }
+
+async function registerUser(username, email, password) {
+    const passwordHash = await bcrypt.hash(password, 10);
+    const { data, error } = await supabase.from('users').insert([{ username, email, password, password_hash: passwordHash }]);
+    if (error) {
+        console.error('Error registering user:', error);
+        throw error;
+    }
+    return data;
+}
+
+async function resetPassword(userId, currentPassword, newPassword) {
+    const { data: user, error } = await supabase
+        .from('users')
+        .select('password_hash')
+        .eq('id', userId)
+        .single();
+
+    if (error || !user) {
+        console.error('Error fetching user for password reset:', error);
+        return false;
+    }
+
+    const match = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!match) return false;
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    const { error: updateError } = await supabase
+        .from('users')
+        .update({ password_hash: newPasswordHash })
+        .eq('id', userId);
+
+    if (updateError) {
+        console.error('Error updating password:', updateError);
+        throw updateError;
+    }
+
+    return true;
+}
+
+async function updateUserProfile(userId, username, email, visibility) {
+    const { error } = await supabase
+        .from('users')
+        .update({ username, email, visibility })
+        .eq('id', userId);
+    if (error) throw error;
+}
+
+async function updatePassword(userId, currentPassword, newPassword) {
+    const { data: user, error } = await supabase
+        .from('users')
+        .select('password_hash')
+        .eq('id', userId)
+        .single();
+
+    if (error || !user) throw new Error('User not found');
+    const match = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!match) throw new Error('Invalid current password');
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const { error: updateError } = await supabase
+        .from('users')
+        .update({ password_hash: hashedPassword })
+        .eq('id', userId);
+
+    if (updateError) throw updateError;
+}
+
+async function updatePreferences(userId, preferences) {
+    const { error } = await supabase
+        .from('users')
+        .update({ preferences })
+        .eq('id', userId);
+    if (error) throw error;
+}
+
+async function fetchRatingHistory(userId) {
+    const { data, error } = await supabase
+        .from('ratings')
+        .select('*')
+        .eq('user_id', userId);
+    if (error) throw error;
+    return data;
+}
+
+async function deleteUserAccount(userId) {
+    const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+    if (error) throw error;
+}
+
+async function fetchUserPreferences(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('preferences')
+            .eq('id', userId)
+            .single();
+
+        if (error) {
+            console.error('Error fetching user preferences:', error);
+            throw error;
+        }
+        return data.preferences || {};
+    } catch (error) {
+        console.error('Unexpected error fetching user preferences:', error);
+        return {};
+    }
+}
+
+async function updateUserPreferences(userId, preferences) {
+    try {
+        const { error } = await supabase
+            .from('users')
+            .update({ preferences })
+            .eq('id', userId);
+
+        if (error) {
+            console.error('Error updating user preferences:', error);
+            throw error;
+        }
+    } catch (error) {
+        console.error('Unexpected error updating user preferences:', error);
+    }
+}
+
+async function fetchActivityLogs(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('activity_logs')
+            .select('*')
+            .eq('user_id', userId)
+            .order('timestamp', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching activity logs:', error);
+            return [];
+        }
+        return data;
+    } catch (error) {
+        console.error('Unexpected error fetching activity logs:', error);
+        return [];
+    }
+}
+
+export async function logActivity(activityData) {
+    const { user_id, username, timestamp, http_method, url, ip_address, user_agent } = activityData;
+
+    const { data, error } = await supabase.from('activity').insert([{
+        user_id,
+        username,
+        timestamp,
+        http_method,
+        url,
+        ip_address,
+        user_agent,
+    }]);
+
+    if (error) {
+        console.error('Error logging activity:', error);
+        throw error;
+    }
+
+    return data;
+}
+
+
+export {
+    addRating,
+    fetchRatings,
+    fetchProfessors,
+    fetchModules,
+    fetchDepartments,
+    fetchSemesters,
+    fetchProfModRelations,
+    fetchModProfRelations,
+    loginUser,
+    registerUser,
+    resetPassword,
+    updateUserProfile,
+    updatePassword,
+    updatePreferences,
+    fetchRatingHistory,
+    deleteUserAccount,
+    fetchUserPreferences,
+    updateUserPreferences,
+    fetchActivityLogs
+};
+
+----------------------------------------
+Filename: hashPasswords.js
+Content:
+import dotenv from 'dotenv';
+dotenv.config();
+
+import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcrypt';
+
+const supabaseUrl = 'https://jqnesxzpfsfxzqnudtig.supabase.co';
+const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function hashPasswords() {
+  try {
+    const { data: users, error } = await supabase.from('users').select('*');
+    if (error) {
+      console.error('Error fetching users:', error);
+      return;
+    }
+
+    console.log('Fetched users:', users);
+
+    for (const user of users) {
+      // Check if the password_hash is empty or already hashed
+      if (!user.password_hash || !user.password_hash.startsWith('$2b$')) {
+        const passwordToHash = user.password || user.password_hash;
+        const hashedPassword = await bcrypt.hash(passwordToHash, 10);
+        
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ password_hash: hashedPassword })
+          .eq('id', user.id);
+          
+        if (updateError) {
+          console.error(`Error updating user ${user.id}:`, updateError);
+        } else {
+          console.log(`User ${user.id} password updated.`);
+        }
+      } else {
+        console.log(`User ${user.id} password is already hashed.`);
+      }
+    }
+  } catch (error) {
+    console.error('Unexpected error:', error);
+  }
+}
+
+hashPasswords();
+
+----------------------------------------

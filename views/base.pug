@@ -1,0 +1,43 @@
+doctype html
+html
+  head
+    title Ratings App
+    link(rel='stylesheet', href='/stylesheets/main.css')
+    script(src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js")
+    script(src='https://cdn.jsdelivr.net/npm/chart.js')
+  body
+    .grid-container
+      .topbar
+        a(href='/home') Home
+        if user
+            a(href='/profile') Profile
+            a(href='/logout') Logout
+        else
+            a(href='/login') Login
+            a(href='/register') Register
+
+      .sidebar
+        block sidebarContent
+      .main-area
+        block mainContent
+
+    // Global scripts loaded for all pages
+    script.
+      document.addEventListener('DOMContentLoaded', function () {
+        const toggleThemeButton = document.querySelector('.toggle-theme');
+        if (toggleThemeButton) {
+          toggleThemeButton.addEventListener('click', function () {
+            document.body.classList.toggle('dark-mode');
+            document.body.classList.toggle('light-mode');
+
+            const newMode = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            axios.post('/profile/preferences', { dark_mode: newMode === 'dark' });
+          });
+        }
+      });
+
+    // Global scripts loaded for all pages
+    script(src='/scripts/global.js')
+
+    // Placeholder for page-specific scripts
+    block scripts

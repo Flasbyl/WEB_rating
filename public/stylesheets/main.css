@@ -1,7 +1,77 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body, html {
   height: 100%;
-  margin: 0;
   font-family: Arial, sans-serif;
+  margin: 0;
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+}
+
+:root {
+  --color-light-bg: #fff;
+  --color-light-text: #000;
+  --color-dark-bg: #121212;
+  --color-dark-text: #f5f5f5;
+  --color-primary: #007BFF;
+  --color-primary-hover: #0056b3;
+}
+
+body.light-mode {
+  background-color: var(--color-light-bg);
+  color: var(--color-light-text);
+}
+
+body.dark-mode {
+  background-color: var(--color-dark-bg);
+  color: var(--color-dark-text);
+}
+
+button {
+  background-color: var(--color-primary);
+}
+
+button:hover {
+  background-color: var(--color-primary-hover);
+}
+
+body.light-mode {
+  background-color: #fff;
+  color: #000;
+}
+
+body.dark-mode {
+  background-color: #121212;
+  color: #f5f5f5;
+}
+
+a:focus, button:focus {
+  outline: 2px solid #007BFF;
+  outline-offset: 2px;
+}
+
+body.dark-mode a:focus, body.dark-mode button:focus {
+  outline: 2px solid #0056b3;
+}
+
+body.dark-mode ::-webkit-scrollbar {
+  width: 12px;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 10px;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background-color: #777;
+}
+
+button:hover {
+  filter: brightness(0.9);
 }
 
 .grid-container {
@@ -13,7 +83,7 @@ body, html {
   overflow-y: auto; /* Ensures the content can scroll */
 }
 
-
+/* Topbar styling */
 .topbar {
   display: flex;
   justify-content: space-between;  /* Spread items between the left and right */
@@ -25,7 +95,12 @@ body, html {
   height: 40px;                    /* Set height for the topbar */
   position: sticky;
   top: 0px;
-  z-index: 3;           /* Make sure the topbar stays above content */
+  z-index: 3;                      /* Make sure the topbar stays above content */
+}
+
+body.dark-mode .topbar {
+  background-color: #333;
+  border-color: #444;
 }
 
 #dataVisualizationHeading {
@@ -36,8 +111,15 @@ body, html {
 
 .topbar a {
   margin-left: 10px;               /* Adds space between Login and Register */
+  color: inherit;
+  text-decoration: none;
 }
 
+.topbar a:hover {
+  text-decoration: underline;
+}
+
+/* Sidebar styling */
 .sidebar {
   grid-row: 1 / span 2;          /* Sidebar spans both rows in the grid */
   padding: 20px;
@@ -51,22 +133,71 @@ body, html {
   box-sizing: border-box;        /* Ensure padding and border are included in the total height */
 }
 
+body.dark-mode .sidebar {
+  background-color: #333;
+  border-color: #444;
+}
 
+/* Sidebar input and select */
 .sidebar input {
   display: block;
   width: 67.5%;
   margin-bottom: 5px;
 }
+
 .sidebar select {
   display: block;
   width: 70%;
   margin-bottom: 5px;
 }
 
+/* Tabs in the sidebar */
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar ul li {
+  margin-bottom: 10px;
+}
+
+.sidebar ul li a {
+  color: inherit;
+  text-decoration: none;
+  font-weight: bold;
+  padding: 10px;
+  display: block;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.sidebar ul li a:hover {
+  background-color: #e8e8e8;
+}
+
+body.dark-mode .sidebar ul li a:hover {
+  background-color: #444;
+}
+
+.sidebar ul li a.active {
+  background-color: #007BFF;
+  color: #fff;
+}
+
+body.dark-mode .sidebar ul li a.active {
+  background-color: #0056b3;
+}
+
+/* Main area styling */
 .main-area {
   padding: 20px;
   border: 1px solid #ccc;
   background-color: #fff;
+}
+
+body.dark-mode .main-area {
+  background-color: #222;
+  border-color: #444;
 }
 
 .main-area h1, h2 {
@@ -83,12 +214,19 @@ body, html {
   font-weight: bold;
 }
 
-.main-area form input {
+.main-area form input, .main-area form select {
   width: 100%;
   margin-bottom: 10px;
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
+  background-color: #fff;
+}
+
+body.dark-mode .main-area form input, body.dark-mode .main-area form select {
+  background-color: #333;
+  border-color: #555;
+  color: #f5f5f5;
 }
 
 .main-area form button {
@@ -104,7 +242,7 @@ body, html {
   background-color: #0056b3;
 }
 
-
+/* Display area styling */
 .display-area {
   padding: 20px;
   border: 1px solid #ccc;
@@ -112,6 +250,12 @@ body, html {
   overflow-y: auto; /* Scrollable display area */
 }
 
-.sidebar > * {
-  margin-bottom: 10px; /* Spacing between elements inside sidebar */
+body.dark-mode .display-area {
+  background-color: #333;
+  border-color: #444;
+}
+
+/* Transition for dark mode */
+body, .topbar, .sidebar, .main-area, .display-area {
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }

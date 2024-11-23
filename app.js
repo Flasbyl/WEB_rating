@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import {
+    supabase,
     addRating,
     fetchRatings,
     fetchProfessors,
@@ -12,8 +13,16 @@ import {
     fetchModProfRelations,
     loginUser,
     registerUser,
-    updateUser,
-    resetPassword
+    resetPassword,
+    updateUserProfile,
+    updatePassword,
+    updatePreferences,
+    fetchRatingHistory,
+    deleteUserAccount,
+    fetchUserPreferences,
+    updateUserPreferences,
+    fetchActivityLogs,
+    logActivity
 } from './db.js';
 
 import express from 'express';
@@ -31,19 +40,203 @@ const app = express();
 
 // Set Pug as the view engine
 app.set('view engine', 'pug');
-app.set('views', path.join(__dirname, 'views')); // Ensure correct path to views directory
+app.set('views', path.join(__dirname, 'views'));
 
 // Middleware to serve static files from 'public' directory
 app.use(express.static(path.join(__dirname, 'public'))); // Ensure correct path to public directory
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Session middleware
 app.use(session({
     secret: process.env.SECRET_KEY,
     resave: false,
     saveUninitialized: true,
     cookie: { secure: false }
 }));
+
+// Activity logging middleware
+app.use(async (req, res, next) => {
+    const user = req.session?.user;
+
+    if (user) {
+        const activityData = {
+            user_id: user.id,
+            username: user.username,
+            timestamp: new Date().toISOString(),
+            http_method: req.method,
+            url: req.originalUrl,
+            ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+            user_agent: req.headers['user-agent'],
+        };
+
+        try {
+            await logActivity(activityData);
+            console.log(`[Activity Logged]: ${JSON.stringify(activityData)}`);
+        } catch (err) {
+            console.error('Failed to log activity:', err);
+        }
+    } else {
+        console.log('No user session; skipping activity logging.');
+    }
+
+    next();
+});
+
+// route definitions
+app.get('/profile', (req, res) => {
+    const user = req.session.user;
+    if (!user) {
+        return res.redirect('/login');
+    }
+    res.render('general', { user, activeTab: 'general' });
+});
+
+app.post('/profile/update', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).send('You must be logged in to update your profile.');
+    }
+
+    const { username, email, visibility } = req.body;
+    try {
+        const userId = req.session.user.id;
+        const { error } = await supabase
+            .from('users')
+            .update({ username, email, visibility })
+            .eq('id', userId);
+
+        if (error) throw error;
+
+        // Update the session with new user data
+        req.session.user = { ...req.session.user, username, email, visibility };
+        res.redirect('/profile');
+    } catch (err) {
+        console.error('Error updating profile:', err);
+        res.status(500).send('Error updating profile');
+    }
+});
+
+app.get('/profile/password', (req, res) => {
+    res.render('password', { activeTab: 'password' });
+});
+
+app.post('/profile/password', async (req, res) => {
+    const { current_password, new_password } = req.body;
+    try {
+        await updatePassword(req.session.user.id, current_password, new_password);
+        res.redirect('/profile/password');
+    } catch (error) {
+        console.error('Error updating password:', error);
+        res.status(500).send('Error updating password');
+    }
+});
+
+app.get('/profile/preferences', async (req, res) => {
+    const user = req.session.user;
+    if (!user) {
+        return res.redirect('/login');
+    }
+
+    const preferences = await fetchUserPreferences(user.id);
+    res.render('preferences', { user, activeTab: 'preferences', preferences });
+});
+
+app.post('/profile/preferences', async (req, res) => {
+    const user = req.session.user;
+    if (!user) {
+        return res.redirect('/login');
+    }
+
+    const { dark_mode, email_notifications } = req.body;
+    const preferences = {
+        dark_mode: !!dark_mode,
+        email_notifications: !!email_notifications
+    };
+
+    await updateUserPreferences(user.id, preferences);
+    res.redirect('/profile/preferences');
+});
+
+app.get('/profile/history', async (req, res) => {
+    try {
+        const ratings = await fetchRatingHistory(req.session.user.id);
+        res.render('history', { ratings, activeTab: 'history' });
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        res.status(500).send('Error fetching history');
+    }
+});
+
+app.get('/profile/privacy', async (req, res) => {
+    console.log('Request received for /profile/privacy');
+    if (!req.session.user) {
+        console.log('No session user found. Redirecting to login.');
+        return res.redirect('/login');
+    }
+
+    const userId = req.session.user.id;
+
+    try {
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('visibility')
+            .eq('id', userId)
+            .single();
+
+        if (error) throw error;
+
+        console.log('Fetched user visibility:', user.visibility);
+        res.render('privacy', { user: { ...req.session.user, visibility: user.visibility }, activeTab: 'privacy' });
+    } catch (err) {
+        console.error('Error loading privacy settings:', err);
+        res.status(500).send('Error loading privacy settings');
+    }
+});
+
+app.post('/profile/privacy/update', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).send('You must be logged in to update your profile.');
+    }
+
+    const { visibility } = req.body;
+    try {
+        const userId = req.session.user.id;
+        const { error } = await supabase
+            .from('users')
+            .update({ visibility })
+            .eq('id', userId);
+
+        if (error) throw error;
+
+        // Update the session with new user data
+        req.session.user = { ...req.session.user, visibility };
+        res.redirect('/profile/privacy');
+    } catch (err) {
+        console.error('Error updating privacy:', err);
+        res.status(500).send('Error updating privacy');
+    }
+});
+
+app.post('/profile/delete', async (req, res) => {
+    try {
+        await deleteUserAccount(req.session.user.id);
+        req.session.destroy();
+        res.redirect('/');
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        res.status(500).send('Error deleting account');
+    }
+});
+
+app.get('/profile/activity', async (req, res) => {
+    const user = req.session.user;
+    if (!user) {
+        return res.redirect('/login');
+    }
+
+    const activityLogs = await fetchActivityLogs(user.id);
+    res.render('activity', { user, activeTab: 'activity', activityLogs });
+});
 
 // Redirect root URL to /home
 app.get('/', (req, res) => {
@@ -62,6 +255,33 @@ app.post('/register', async (req, res) => {
     } catch (error) {
         console.error('Error registering user:', error);
         res.status(500).send('Error registering user');
+    }
+});
+
+app.get('/resetpassword', (req, res) => {
+    res.render('resetpassword');
+});
+
+app.post('/resetpassword', async (req, res) => {
+    const { email, username } = req.body;
+
+    try {
+        if (!email && !username) {
+            return res.status(400).send('Please provide a username or email.');
+        }
+
+        // Attempt to reset password based on either username or email
+        const identifier = email || username;
+        const result = await resetPassword(identifier);
+
+        if (!result) {
+            return res.status(404).send('User not found.');
+        }
+
+        res.send(`Password reset instructions sent to ${email || username}.`);
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        res.status(500).send('Error resetting password.');
     }
 });
 
@@ -88,7 +308,23 @@ app.get('/logout', (req, res) => {
 
 app.get('/home', async (req, res) => {
     try {
-        res.render('home', { user: req.session.user });
+        const { profIdValue, moduleIdValue } = req.query;
+
+        // Fetch initial options for dropdowns (mock example; replace with your logic)
+        const firstDropdown = await fetchProfessors('*');
+        const secondDropdown = profIdValue ? await fetchModules('*') : [];
+
+        const originalOptions = {
+            firstDropdown,
+            secondDropdown,
+        };
+
+        res.render('home', {
+            user: req.session.user,
+            selectedProfIdValue: profIdValue || '',
+            selectedModuleIdValue: moduleIdValue || '',
+            originalOptions,
+        });
     } catch (error) {
         console.error('Error rendering home:', error);
         res.status(500).send('Internal Server Error');
@@ -203,46 +439,21 @@ app.get('/semester', async (req, res) => {
     }
 });
 
-app.get('/profile', async (req, res) => {
-    if (!req.session.user) {
-        return res.redirect('/login');
-    }
-    res.render('profile', { user: req.session.user });
-});
-
-app.get('/profile/password', async (req, res) => {
-    if (!req.session.user) {
-        return res.redirect('/login');
-    }
-    res.render('password', { user: req.session.user });
-});
-
-app.get('/profile/preferences', async (req, res) => {
-    if (!req.session.user) {
-        return res.redirect('/login');
-    }
-    res.render('preferences', { user: req.session.user });
-});
-
-app.get('/profile/placeholder', async (req, res) => {
-    if (!req.session.user) {
-        return res.redirect('/login');
-    }
-    res.render('placeholder', { user: req.session.user });
-});
-
-// post new rating to sql db
 app.post('/submit-rating', async (req, res) => {
     if (!req.session.user) {
         return res.status(401).send('Please login to submit ratings');
     }
 
     const { comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden } = req.body;
-    console.log('body app.js line 199:', req.body)
+
     try {
-        await addRating(comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden);
-        res.redirect('/home');
+        const user_id = req.session.user.id;
+        await addRating(comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden, user_id);
+
+        // Redirect back to the home page with only necessary values in the query string
+        res.redirect(`/home?profIdValue=${prof_id_hidden}&moduleIdValue=${module_id_hidden}`);
     } catch (err) {
+        console.error('Error submitting rating:', err);
         res.status(500).send('Error submitting rating');
     }
 });

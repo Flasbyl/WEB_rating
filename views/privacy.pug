@@ -1,0 +1,17 @@
+extends base_profile
+
+block mainContent
+  h1 Privacy & Data
+
+  // Form for account deletion
+  form(action='/profile/delete', method='POST')
+    p Delete your account and all associated data. This action cannot be undone.
+    button(type='submit') Delete Account
+
+  // Form for updating visibility
+  form(action='/profile/privacy/update', method='POST')
+    label(for='visibility') Profile Visibility:
+    select(name='visibility')
+      option(value='public' selected=user.visibility === 'public') Public
+      option(value='private' selected=user.visibility === 'private') Private
+    button(type='submit') Update Visibility

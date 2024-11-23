@@ -1,0 +1,526 @@
+Filename: base.pug
+Content:
+doctype html
+html
+  head
+    title Ratings App
+    link(rel='stylesheet', href='/stylesheets/main.css')
+    script(src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js")
+    script(src='https://cdn.jsdelivr.net/npm/chart.js')
+  body
+    .grid-container
+      .topbar
+        a(href='/home') Back to Home
+        if user
+            a(href='/profile') Profile
+            a(href='/logout') Logout
+        else
+            a(href='/login') Login
+            a(href='/register') Register
+
+      .sidebar
+        block sidebarContent
+      .main-area
+        block mainContent
+
+    // Scripts loaded at the end of body for better performance
+    script.
+      document.addEventListener('DOMContentLoaded', function () {
+        const toggleThemeButton = document.querySelector('.toggle-theme');
+        if (toggleThemeButton) {
+          toggleThemeButton.addEventListener('click', function () {
+            document.body.classList.toggle('dark-mode');
+            document.body.classList.toggle('light-mode');
+
+            const newMode = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            axios.post('/profile/preferences', { dark_mode: newMode === 'dark' });
+          });
+        }
+      });
+
+    // Add additional shared JS files if needed
+    script(src='/scripts/global.js')
+----------------------------------------
+Filename: base_profile.pug
+Content:
+extends base
+
+block sidebarContent
+  h2 User Profile
+  ul
+    li: a(href='/profile' class=(activeTab === 'general' ? 'active' : '')) General Settings
+    li: a(href='/profile/password' class=(activeTab === 'password' ? 'active' : '')) Change Password
+    li: a(href='/profile/preferences' class=(activeTab === 'preferences' ? 'active' : '')) Manage Preferences
+    li: a(href='/profile/history' class=(activeTab === 'history' ? 'active' : '')) Rating History
+    li: a(href='/profile/privacy' class=(activeTab === 'privacy' ? 'active' : '')) Privacy & Data
+----------------------------------------
+Filename: chart.pug
+Content:
+doctype html
+html
+  head
+    title Ratings Chart
+    script(src='https://cdn.jsdelivr.net/npm/chart.js')
+  body
+    h1 Rating Analysis
+    canvas#ratingChart(width='800', height='400')
+    script.
+      const ctx = document.getElementById('ratingChart').getContext('2d');
+      const ratingData = JSON.parse('!{ratingData}');
+
+      // Ensure all x-values are numbers
+      ratingData.scatter.forEach(d => d.x = Number(d.x));
+      ratingData.curve.forEach(d => d.x = Number(d.x));
+
+      const mixedChart = new Chart(ctx, {
+          type: 'scatter', // Base type is scatter to allow numerical x-axis
+          data: {
+              datasets: [{
+                  type: 'scatter',
+                  label: 'Individual Ratings',
+                  data: ratingData.scatter,
+                  backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                  borderColor: 'rgba(255, 99, 132, 1)',
+                  showLine: false // Ensure no line is drawn for scatter points
+              }, {
+                  type: 'line',
+                  label: 'Average Ratings',
+                  data: ratingData.curve,
+                  backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                  borderColor: 'rgba(54, 162, 235, 1)',
+                  fill: false // Line chart does not fill under the line
+              }]
+          },
+          options: {
+              scales: {
+                  x: {
+                      type: 'linear',
+                      position: 'bottom',
+                      title: {
+                          display: true,
+                          text: 'Semester ID'
+                      }
+                  },
+                  y: {
+                      title: {
+                          display: true,
+                          text: 'Rating'
+                      }
+                  }
+              },
+              plugins: {
+                  legend: {
+                      display: true,
+                      position: 'top'
+                  }
+              }
+          }
+      });
+
+----------------------------------------
+Filename: general.pug
+Content:
+extends base_profile
+
+block mainContent
+  h1 General Settings
+  p Welcome to your profile, #{user.username}.
+  
+  form(action='/profile/update' method='POST')
+    label(for='username') Username:
+    input(type='text', name='username', value=user.username, required=true)
+
+    label(for='email') Email:
+    input(type='email', name='email', value=user.email, required=true)
+
+    label(for='visibility') Profile Visibility:
+    select(name='visibility')
+      option(value='public' selected=user.visibility === 'public') Public
+      option(value='private' selected=user.visibility === 'private') Private
+
+    button(type='submit') Update Profile
+
+----------------------------------------
+Filename: history.pug
+Content:
+extends base_profile
+
+block mainContent
+  h1 Rating History
+  ul
+    each rating in ratings
+      li
+        p Module: #{rating.module_name}
+        p Professor: #{rating.professor_name}
+        p Rating: #{rating.rating}
+        p Comment: #{rating.comment}
+        p Semester: #{rating.semester}
+        p Date: #{rating.created_at}
+
+----------------------------------------
+Filename: home.pug
+Content:
+
+extends base
+
+block sidebarContent
+  h2 Technik & Architektur
+  h2 Select Category
+  select(id="categorySelector", onchange="toggleSelection()")
+    option(value="") Select
+    option(value="professor") Professor
+    option(value="module") Module
+
+  p Select Professor/Module:
+  input(type="text" id="firstDropdownSearch" placeholder="Search..." oninput="filterDropdown('firstDropdown', this.value)")
+  select(id="firstDropdown", onchange="updateSecondDropdown()")
+    option(value="") Make selection
+
+  p Select Related:
+  input(type="text" id="secondDropdownSearch" placeholder="Search..." oninput="filterDropdown('secondDropdown', this.value)")
+  select(id="secondDropdown", onchange="loadChart()")
+    option(value="") Make selection
+
+block mainContent
+  canvas#ratingChart(width='800', height='400', onload="loadChart()")
+
+  p Add Rating:
+  p You must be logged in to submit a rating.
+
+  form(action='/submit-rating', method='POST')
+    label(for='comment') Comment:
+    input(type='text', name='comment', required=true)
+
+    label(for='rating') Rating:
+    select(name='rating', required=true)
+      option(value='') Select Rating
+      each value in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        option(value=value) #{value}
+
+    label(for='sem_id') Semester:
+    select(id='sem_id')
+      option(value='') select semester 
+
+    input(type='hidden', name='prof_id_hidden', id='prof_id_hidden')
+    input(type='hidden', name='module_id_hidden', id='module_id_hidden')
+    input(type='hidden', name='sem_id_hidden', id='sem_id_hidden')
+
+    button(type='submit') Submit Rating
+
+
+        script.
+          let chartInstance = null;
+          let originalOptions = {
+            firstDropdown: [],
+            secondDropdown: []
+          };
+
+          document.addEventListener('DOMContentLoaded', function() {
+            loadSemester();
+          });
+
+          function toggleSelection() {
+            const category = document.getElementById('categorySelector').value;
+            if (!category) return;  // Do nothing if the default option is selected
+
+            axios.get(`/${category}s`)
+              .then(function(response) {
+                const dropdown = document.getElementById('firstDropdown');
+                dropdown.innerHTML = '<option value="">Make selection</option>';  // Clear existing options and add default
+                originalOptions.firstDropdown = response.data;  // Store original list
+
+                response.data.forEach(item => {
+                  const option = new Option(item.name, item.id);
+                  dropdown.appendChild(option);
+                });
+              })
+              .catch(function(error) {
+                console.error('Error loading data:', error);
+              });
+          }
+
+          function updateSecondDropdown() {
+            const firstDropdown = document.getElementById('firstDropdown');
+            const selectedId = firstDropdown.value;
+            if (!selectedId) return;  // Do nothing if the default option or no option is selected
+
+            const category = document.getElementById('categorySelector').value;
+            const relatedType = category === 'professor' ? 'module' : 'professor';
+
+            axios.get(`/relations/${relatedType}/${selectedId}`)
+              .then(function(response) {
+                const secondDropdown = document.getElementById('secondDropdown');
+                secondDropdown.innerHTML = '<option value="">Make selection</option>';  // Clear existing options and add default
+                originalOptions.secondDropdown = response.data;  // Store original list
+
+                response.data.forEach(item => {
+                  const option = new Option(item.name, item.id);
+                  secondDropdown.appendChild(option);
+                });
+              })
+              .catch(function(error) {
+                console.error(`Error updating second dropdown:`, error);
+              });
+          }
+
+          function filterDropdown(dropdownId, searchTerm) {
+            const dropdown = document.getElementById(dropdownId);
+            const originalList = originalOptions[dropdownId];
+            const filteredList = originalList.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+            dropdown.innerHTML = '<option value="">Make selection</option>';
+            filteredList.forEach(item => {
+              const option = new Option(item.name, item.id);
+              dropdown.appendChild(option);
+            });
+          }
+
+          function loadChart() {
+            const category = document.getElementById('categorySelector').value;
+            const firstId = document.getElementById('firstDropdown').value;
+            const secondId = document.getElementById('secondDropdown').value;
+            if (!category || !firstId || !secondId) return;
+            
+            const ctx = document.getElementById('ratingChart')?.getContext('2d');
+            if (!ctx) {
+                console.error('Canvas element with id "ratingChart" is not found in the DOM.');
+                return;
+            }
+
+            axios.get(`/chart?category=${category}&firstId=${firstId}&secondId=${secondId}`)
+              .then(function(response) {
+                const ctx = document.getElementById('ratingChart').getContext('2d');
+                const { ratingData, profIdValue, moduleIdValue } = response.data;
+
+                document.getElementById('prof_id_hidden').value = profIdValue;
+                document.getElementById('module_id_hidden').value = moduleIdValue;
+
+                if (chartInstance) {
+                  chartInstance.destroy();
+                }
+
+                ratingData.scatter.forEach(d => d.x = Number(d.x));
+                ratingData.curve.forEach(d => d.x = Number(d.x));
+
+                chartInstance = new Chart(ctx, {
+                  type: 'scatter',
+                  data: {
+                    datasets: [{
+                      type: 'scatter',
+                      label: 'Individual Ratings',
+                      data: ratingData.scatter,
+                      backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                      borderColor: 'rgba(255, 99, 132, 1)',
+                      showLine: false
+                    }, {
+                      type: 'line',
+                      label: 'Average Ratings',
+                      data: ratingData.curve,
+                      backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                      borderColor: 'rgba(54, 162, 235, 1)',
+                      fill: false,
+                      tension: 0.25
+                    }]
+                  },
+                  options: {
+                    scales: {
+                      x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                          display: true,
+                          text: 'Semester ID'
+                        }
+                      },
+                      y: {
+                        title: {
+                          display: true,
+                          text: 'Rating'
+                        }
+                      }
+                    },
+                    plugins: {
+                      legend: {
+                        display: true,
+                        position: 'top'
+                      }
+                    }
+                  }
+                });
+              })
+              .catch(function(error) {
+                console.error('Error loading chart data:', error);
+              });
+          }
+
+          function loadSemester() {
+            axios.get('/semester')
+              .then(function(response) {
+                const dropdown = document.getElementById('sem_id');
+                const selectedValue = dropdown.value;
+                dropdown.innerHTML = '<option value="">Select Semester</option>';
+                response.data.forEach(semester => {
+                  const option = new Option(semester.sem_name, semester.sem_id);
+                  dropdown.appendChild(option);
+                });
+                dropdown.value = selectedValue;
+                document.getElementById('sem_id_hidden').value = selectedValue;
+              })
+              .catch(function(error) {
+                console.error('Error loading semesters:', error);
+              });
+
+            const dropdown = document.getElementById('sem_id');
+            dropdown.addEventListener('change', function() {
+              const selectedValue = dropdown.value;
+              document.getElementById('sem_id_hidden').value = selectedValue;
+            });
+          }
+
+----------------------------------------
+Filename: index.pug
+Content:
+doctype html
+html
+  head
+    title Ratings Reviews
+  body
+    h1 Submit a New Rating
+    form(action='/submit-rating', method='POST')
+      label(for='comment') Comment:
+      input(type='text', name='comment', required=true)
+
+      label(for='rating') Rating:
+      input(type='number', name='rating', required=true)
+
+      label(for='module_id') Module:
+      input(type='number', name='module_id', required=true)
+
+      label(for='prof_id') Professor:
+      input(type='number', name='prof_id', required=true)
+
+      label(for='sem_id') Semester ID:
+      input(type='number', name='sem_id', required=true)
+
+      button(type='submit') Submit Rating
+
+    h1 Ratings Data
+    ul
+      each rating in ratings
+        li
+          p Rating ID: #{rating.rating_id}
+          p Rating: #{rating.rating}
+          p Module ID: #{rating.module_id}
+          p Prof ID: #{rating.prof_id}
+          p Comment: #{rating.comment}
+          p Semester ID: #{rating.sem_id}
+          p Timestamp: #{rating.created_at}
+
+----------------------------------------
+Filename: login.pug
+Content:
+doctype html
+html
+  head
+    title Login
+  body
+    h1 Login
+    form(action='/login' method='post')
+      label(for='username') Username:
+      input(type='text' name='username' required)
+      br
+      label(for='password') Password:
+      input(type='password' name='password' required)
+      br
+      button(type='submit') Login
+    a(href='/') Home
+
+----------------------------------------
+Filename: password.pug
+Content:
+extends base_profile
+
+block mainContent
+  h1 Change Password
+  form(action='/profile/password', method='POST')
+    label(for='current_password') Current Password:
+    input(type='password', name='current_password', required)
+
+    label(for='new_password') New Password:
+    input(type='password', name='new_password', required)
+
+    label(for='confirm_password') Confirm New Password:
+    input(type='password', name='confirm_password', required)
+
+    button(type='submit') Update Password
+
+----------------------------------------
+Filename: preferences.pug
+Content:
+extends base_profile
+
+block mainContent
+  h1 Manage Preferences
+  form(action='/profile/preferences', method='POST')
+
+    label(for='dark_mode') Dark Mode:
+    input(type='checkbox', name='dark_mode', checked=(user.preferences.dark_mode ? 'checked' : ''))
+
+    label(for='email_notifications') Email Notifications:
+    input(type='checkbox', name='email_notifications', checked=(user.preferences.email_notifications ? 'checked' : ''))
+
+    button(type='submit') Save Preferences
+
+----------------------------------------
+Filename: privacy.pug
+Content:
+extends base_profile
+
+block mainContent
+  h1 Privacy & Data
+  form(action='/profile/delete', method='POST')
+    p Delete your account and all associated data. This action cannot be undone.
+    button(type='submit') Delete Account
+
+----------------------------------------
+Filename: profile.pug
+Content:
+extends base_profile
+
+block mainContent
+  h1 Welcome, #{user.username}
+  form(action='/profile/update', method='POST')
+    label(for='username') Username:
+    input(type='text', name='username', value=user.username, required)
+    
+    label(for='email') Email:
+    input(type='email', name='email', value=user.email, required)
+
+    label(for='visibility') Visibility:
+    input(type='checkbox', name='visibility', checked=(user.visibility ? 'checked' : ''))
+
+    button(type='submit') Update Profile
+
+----------------------------------------
+Filename: register.pug
+Content:
+doctype html
+html
+  head
+    title Register
+  body
+    h1 Register
+    form(action='/register' method='post')
+      label(for='username') Username:
+      input(type='text' name='username' required)
+      br
+      label(for='email') Email:
+      input(type='email' name='email' required)
+      br
+      label(for='password') Password:
+      input(type='password' name='password' required)
+      br
+      button(type='submit') Register
+    a(href='/') Home
+
+----------------------------------------

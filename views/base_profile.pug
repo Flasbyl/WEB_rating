@@ -1,0 +1,10 @@
+extends base
+
+block sidebarContent
+  h2 User Profile
+  ul
+    li: a(href='/profile' class=(activeTab === 'general' ? 'active' : '')) General Settings
+    li: a(href='/profile/password' class=(activeTab === 'password' ? 'active' : '')) Change Password
+    li: a(href='/profile/preferences' class=(activeTab === 'preferences' ? 'active' : '')) Manage Preferences
+    li: a(href='/profile/history' class=(activeTab === 'history' ? 'active' : '')) Rating History
+    li: a(href='/profile/privacy' class=(activeTab === 'privacy' ? 'active' : '')) Privacy & Data

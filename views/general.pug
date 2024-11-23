@@ -1,0 +1,13 @@
+extends base_profile
+
+block mainContent
+  h1 General Settings
+  
+  form(action='/profile/update' method='POST')
+    label(for='username') Username:
+    input(type='text', name='username', value=user.username, required=true)
+
+    label(for='email') Email:
+    input(type='email', name='email', value=user.email, required=true)
+
+    button(type='submit') Update Profile

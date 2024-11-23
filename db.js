@@ -10,39 +10,51 @@ const supabaseUrl = 'https://jqnesxzpfsfxzqnudtig.supabase.co';
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function fetchProfessors(profName) {
+async function fetchProfessors(columns = '*') {
     try {
         const { data, error } = await supabase
             .from('professors')
-            .select(profName);
+            .select(columns);
 
         if (error) {
             console.error('Error fetching professors:', error);
-            return [];
+            return []; // Return an empty array on error
         }
-        console.log('line 23 db.js: Fetched professors:', data[0], '...');
+
+        if (!data || data.length === 0) {
+            console.warn('No professors found.');
+            return []; // Return an empty array if no data
+        }
+
+        console.log(`line 23 db.js: Fetched ${data.length} professors.`);
         return data;
     } catch (error) {
         console.error('Unexpected error fetching professors:', error);
-        return [];
+        return []; // Return an empty array on unexpected error
     }
 }
 
-async function fetchModules(moduleName) {
+async function fetchModules(columns = '*') {
     try {
         const { data, error } = await supabase
             .from('modules')
-            .select(moduleName);
+            .select(columns);
 
         if (error) {
             console.error('Error fetching modules:', error);
-            return [];
+            return []; // Return an empty array on error
         }
-        console.log('line 41 db.js: Fetched modules:', data[0], '...');
+
+        if (!data || data.length === 0) {
+            console.warn('No modules found.');
+            return []; // Return an empty array if no data
+        }
+
+        console.log(`line 41 db.js: Fetched ${data.length} modules.`);
         return data;
     } catch (error) {
         console.error('Unexpected error fetching modules:', error);
-        return [];
+        return []; // Return an empty array on unexpected error
     }
 }
 
@@ -223,22 +235,30 @@ async function fetchRatings(category, firstId, secondId) {
     }
 }
 
+async function addRating(comment, rating, prof_id, sem_id, module_id, user_id) {
+    try {
+        const { data, error } = await supabase.from('ratings').insert([{
+            comment,
+            rating,
+            prof_id,
+            sem_id,
+            module_id,
+            user_id,
+        }]);
 
-async function addRating(comment, rating, prof_id, sem_id, module_id) {
-    console.log('line 228: comment:', comment)
-    console.log('line 228: rating:', rating)
-    console.log('line 228: prof hidden:', prof_id)
-    console.log('line 228: sem hidden:', sem_id)
-    console.log('line 228: mod hidden:', module_id)
+        if (error) {
+            console.error('Error inserting rating:', error);
+            throw error;
+        }
 
-    const { data, error } = await supabase.from('ratings').insert([{ comment, rating, prof_id, sem_id, module_id}]);
-    console.log('line 229 db.js:', comment, rating, prof_id, sem_id, module_id)
-    if (error) {
-        console.error('Error inserting rating:', error);
+        console.log('Rating successfully added:', data);
+        return data;
+    } catch (error) {
+        console.error('Unexpected error adding rating:', error);
         throw error;
     }
-    return data;
 }
+
 
 async function loginUser(username, password) {
     const { data: user, error } = await supabase.from('users').select('*').eq('username', username).single();
@@ -262,49 +282,213 @@ async function registerUser(username, email, password) {
     return data;
 }
 
-async function updateUser(userId, updates) {
-    const { data, error } = await supabase
-        .from('users')
-        .update(updates)
-        .eq('id', userId);
+async function resetPassword(identifier) {
+    try {
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('id, email')
+            .or(`username.eq.${identifier},email.eq.${identifier}`)
+            .single();
 
-    if (error) {
-        console.error('Error updating user:', error);
+        if (error || !user) {
+            console.error('User not found for reset:', error);
+            return null;
+        }
+
+        const tempPassword = Math.random().toString(36).substring(2, 8); // e.g., "temp123"
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ password_hash: hashedPassword })
+            .eq('id', user.id);
+
+        if (updateError) {
+            console.error('Error updating password:', updateError);
+            return null;
+        }
+
+        await sendPasswordResetEmail(user.email, tempPassword);
+
+        console.log(`Temporary password sent to ${user.email}`);
+        return { email: user.email, tempPassword };
+    } catch (error) {
+        console.error('Error during password reset logic:', error);
         throw error;
     }
-    return data;
 }
 
-async function resetPassword(userId, currentPassword, newPassword) {
+async function sendPasswordResetEmail(email, resetLink) {
+    // Replace this with actual email service logic
+    console.log(`Sending password reset email to ${email} with link: ${resetLink}`);
+}
+
+async function updateUserProfile(userId, username, email, visibility) {
+    const { error } = await supabase
+        .from('users')
+        .update({ username, email, visibility })
+        .eq('id', userId);
+    if (error) throw error;
+}
+
+async function updatePassword(userId, currentPassword, newPassword) {
     const { data: user, error } = await supabase
         .from('users')
         .select('password_hash')
         .eq('id', userId)
         .single();
 
-    if (error || !user) {
-        console.error('Error fetching user for password reset:', error);
-        return false;
-    }
-
+    if (error || !user) throw new Error('User not found');
     const match = await bcrypt.compare(currentPassword, user.password_hash);
-    if (!match) return false;
+    if (!match) throw new Error('Invalid current password');
 
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
     const { error: updateError } = await supabase
         .from('users')
-        .update({ password_hash: newPasswordHash })
+        .update({ password_hash: hashedPassword })
         .eq('id', userId);
 
-    if (updateError) {
-        console.error('Error updating password:', updateError);
-        throw updateError;
-    }
+    if (updateError) throw updateError;
+}
 
-    return true;
+async function updatePreferences(userId, preferences) {
+    const { error } = await supabase
+        .from('users')
+        .update({ preferences })
+        .eq('id', userId);
+    if (error) throw error;
+}
+
+async function fetchRatingHistory(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select('id, comment, rating, prof_id, sem_id, module_id, created_at')
+            .eq('user_id', userId);
+
+        if (error) {
+            console.error('Error fetching rating history:', error);
+            throw error;
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Unexpected error fetching rating history:', error);
+        throw error;
+    }
+}
+
+
+async function deleteUserAccount(userId) {
+    const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+    if (error) throw error;
+}
+
+async function fetchUserPreferences(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('preferences')
+            .eq('id', userId)
+            .single();
+
+        if (error) {
+            console.error('Error fetching user preferences:', error);
+            throw error;
+        }
+        return data.preferences || {};
+    } catch (error) {
+        console.error('Unexpected error fetching user preferences:', error);
+        return {};
+    }
+}
+
+async function updateUserPreferences(userId, preferences) {
+    try {
+        const { error } = await supabase
+            .from('users')
+            .update({ preferences })
+            .eq('id', userId);
+
+        if (error) {
+            console.error('Error updating user preferences:', error);
+            throw error;
+        }
+    } catch (error) {
+        console.error('Unexpected error updating user preferences:', error);
+    }
+}
+
+async function fetchActivityLogs(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('activity_logs')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('visibility');
+
+        if (error) {
+            console.error('Error fetching privacy:', error);
+            return [];
+        }
+        return data;
+    } catch (error) {
+        console.error('Unexpected error fetching privacy:', error);
+        return [];
+    }
+}
+
+export async function logActivity(activityData) {
+    const { user_id, action } = activityData;
+
+    try {
+        const { data, error } = await supabase
+            .from('activity')
+            .insert([
+                {
+                    user_id,
+                    action, // Simplify to include only the relevant columns
+                    created_at: new Date().toISOString() // Optional: Supabase can auto-generate this
+                }
+            ]);
+
+        if (error) {
+            console.error('Error logging activity to database:', error);
+            throw error;
+        }
+
+        return data;
+    } catch (err) {
+        console.error('Unexpected error during activity logging:', err);
+        throw err;
+    }
+}
+
+
+async function fetchPrivacy(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('user_id', userId)
+            .order('timestamp', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching activity logs:', error);
+            return [];
+        }
+        return data;
+    } catch (error) {
+        console.error('Unexpected error fetching activity logs:', error);
+        return [];
+    }
 }
 
 export {
+    supabase,
     addRating,
     fetchRatings,
     fetchProfessors,
@@ -315,6 +499,14 @@ export {
     fetchModProfRelations,
     loginUser,
     registerUser,
-    updateUser,
-    resetPassword
+    resetPassword,
+    updateUserProfile,
+    updatePassword,
+    updatePreferences,
+    fetchRatingHistory,
+    deleteUserAccount,
+    fetchUserPreferences,
+    updateUserPreferences,
+    fetchActivityLogs,
+    fetchPrivacy
 };

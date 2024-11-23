@@ -1,0 +1,13 @@
+extends base_profile
+
+block mainContent
+  h1 Rating History
+  ul
+    each rating in ratings
+      li
+        p Module: #{rating.module_name}
+        p Professor: #{rating.professor_name}
+        p Rating: #{rating.rating}
+        p Comment: #{rating.comment}
+        p Semester: #{rating.semester}
+        p Date: #{rating.created_at}

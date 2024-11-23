@@ -1,0 +1,13 @@
+extends base_profile
+
+block mainContent
+  h1 Manage Preferences
+  form(action='/profile/preferences', method='POST')
+
+    label(for='dark_mode') Dark Mode:
+    input(type='checkbox', name='dark_mode', checked=(user.preferences.dark_mode ? 'checked' : ''))
+
+    label(for='email_notifications') Email Notifications:
+    input(type='checkbox', name='email_notifications', checked=(user.preferences.email_notifications ? 'checked' : ''))
+
+    button(type='submit') Save Preferences
