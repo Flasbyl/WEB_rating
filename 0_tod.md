@@ -12,5 +12,3 @@
 
 - editable ratings history
 - sql injection protection
-- submission panel
-- comment section

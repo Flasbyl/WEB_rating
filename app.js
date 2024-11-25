@@ -157,16 +157,6 @@ app.post('/profile/preferences', async (req, res) => {
     res.redirect('/profile/preferences');
 });
 
-app.get('/profile/history', async (req, res) => {
-    try {
-        const ratings = await fetchRatingHistory(req.session.user.id);
-        res.render('history', { ratings, activeTab: 'history' });
-    } catch (error) {
-        console.error('Error fetching history:', error);
-        res.status(500).send('Error fetching history');
-    }
-});
-
 app.get('/profile/privacy', async (req, res) => {
     console.log('Request received for /profile/privacy');
     if (!req.session.user) {
@@ -351,7 +341,6 @@ app.get('/home', async (req, res) => {
     }
 });
 
-// get professors
 app.get('/professors', async (req, res) => {
     try {
         const professors = await fetchProfessors('*');
@@ -362,7 +351,6 @@ app.get('/professors', async (req, res) => {
     }
 });
 
-// get modules
 app.get('/modules', async (req, res) => {
     try {
         const modules = await fetchModules('*');
@@ -373,7 +361,6 @@ app.get('/modules', async (req, res) => {
     }
 });
 
-// get departments
 app.get('/departments', async (req, res) => {
     try {
         const departments = await fetchDepartments();
@@ -384,7 +371,6 @@ app.get('/departments', async (req, res) => {
     }
 });
 
-// get Professor Module Relations
 app.get('/relations/professor/:profName', async (req, res) => {
     try {
         const relationsPM = await fetchModProfRelations(req.params.profName);
@@ -395,7 +381,6 @@ app.get('/relations/professor/:profName', async (req, res) => {
     }
 });
 
-// get Module Professor Relations
 app.get('/relations/module/:moduleName', async (req, res) => {
     try {
         const relationsMP = await fetchProfModRelations(req.params.moduleName);
@@ -406,7 +391,6 @@ app.get('/relations/module/:moduleName', async (req, res) => {
     }
 });
 
-// get data for graphs
 app.get('/chart', async (req, res) => {
     const { category, firstId, secondId } = req.query;
     try {
@@ -447,7 +431,6 @@ app.get('/chart', async (req, res) => {
     }
 });
 
-// get semesters
 app.get('/semester', async (req, res) => {
     try {
         const semesterData = await fetchSemesters();
@@ -503,6 +486,91 @@ app.get('/comments', async (req, res) => {
     } catch (err) {
         console.error('Unexpected error fetching comments:', err);
         res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+app.get('/profile/history', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).send('Unauthorized. Please log in.');
+    }
+
+    const userId = req.session.user.id;
+
+    try {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select('rating_id, comment, rating, grade, workload, created_at, prof_id, module_id')
+            .eq('user_id', userId);
+
+        if (error) {
+            console.error('Error fetching user ratings history:', error);
+            return res.status(500).send('Failed to load history.');
+        }
+
+        // Serve JSON for AJAX calls
+        if (req.headers.accept && req.headers.accept.includes('application/json')) {
+            return res.json(data);
+        }
+
+        // Render Pug template for regular page load
+        res.render('history', { ratings: data, activeTab: 'history' });
+    } catch (error) {
+        console.error('Unexpected error fetching user ratings history:', error);
+        res.status(500).send('Failed to load history.');
+    }
+});
+
+app.put('/profile/history/:id', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).send('Unauthorized. Please log in.');
+    }
+
+    const userId = req.session.user.id;
+    const { rating_id } = req.params;
+    const { comment, rating, grade, workload } = req.body;
+
+    try {
+        const { data, error } = await supabase
+            .from('ratings')
+            .update({ comment, rating, grade, workload })
+            .eq('rating_id', rating_id)
+            .eq('user_id', userId);
+
+        if (error) {
+            console.error('Error updating comment:', error);
+            return res.status(500).send('Failed to update the comment.');
+        }
+
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('Unexpected error updating comment:', error);
+        res.status(500).send('Failed to update the comment.');
+    }
+});
+
+app.post('/profile/history/edit', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).send('Unauthorized. Please log in.');
+    }
+
+    const { rating_id, comment, rating, grade, workload } = req.body;
+
+    try {
+        const { error } = await supabase
+            .from('ratings')
+            .update({ comment, rating, grade, workload })
+            .eq('rating_id', rating_id)
+            .eq('user_id', req.session.user.id);
+
+        if (error) {
+            console.error('Error updating rating:', error);
+            return res.status(500).send('Failed to update rating.');
+        }
+
+        res.redirect('/profile/history'); // Redirect to the history page
+    } catch (error) {
+        console.error('Unexpected error updating rating:', error);
+        res.status(500).send('Failed to update rating.');
     }
 });
 

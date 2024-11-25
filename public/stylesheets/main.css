@@ -377,3 +377,50 @@ body.dark-mode #slidingPanel {
 .comment-tile:last-child {
   border-bottom: none; /* Remove border for the last tile */
 }
+
+.comment-tile {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 10px;
+  background-color: #f9f9f9;
+  position: relative;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.comment-text {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.comment-details {
+  font-size: 14px;
+  color: #666;
+  display: flex;
+  gap: 20px;
+}
+
+.edit-comment-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 5px 10px;
+  font-size: 14px;
+  background-color: #007BFF;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.edit-comment-button:hover {
+  background-color: #0056b3;
+}
