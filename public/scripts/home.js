@@ -7,6 +7,35 @@ let originalOptions = {
 document.addEventListener('DOMContentLoaded', function () {
     loadSemester();
 });
+document.addEventListener('DOMContentLoaded', function () {
+    const toggler = document.querySelector('.menu__toggler');
+    const loginModal = document.getElementById('loginModal');
+    const closeModalButton = loginModal.querySelector('.close');
+    const isLoggedIn = typeof user !== 'undefined' && user; // Replace with actual user check logic
+
+    if (toggler && !isLoggedIn) {
+        toggler.addEventListener('click', (event) => {
+            event.preventDefault(); // Prevent opening the sliding panel
+            if (loginModal) {
+                loginModal.style.display = 'block';
+            }
+        });
+    }
+
+    // Close modal when clicking the "X" button
+    if (closeModalButton) {
+        closeModalButton.addEventListener('click', () => {
+            loginModal.style.display = 'none';
+        });
+    }
+
+    // Close modal when clicking outside of it
+    window.addEventListener('click', (event) => {
+        if (loginModal && event.target === loginModal) {
+            loginModal.style.display = 'none';
+        }
+    });
+});
 
 function toggleSelection() {
     const category = document.getElementById('categorySelector').value;
@@ -172,4 +201,116 @@ function loadSemester() {
         const selectedValue = dropdown.value;
         document.getElementById('sem_id_hidden').value = selectedValue;
     });
+}
+
+// Cookie Helper Functions
+function setCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = name + "=" + value + ";" + expires + ";path=/";
+}
+
+function getCookie(name) {
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const cookies = decodedCookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        let cookie = cookies[i].trim();
+        if (cookie.indexOf(name + "=") === 0) {
+            return cookie.substring(name.length + 1);
+        }
+    }
+    return "";
+}
+
+// Save dropdown selections to cookies
+document.getElementById('categorySelector').addEventListener('change', function () {
+    setCookie('categorySelector', this.value, 1); // Store for 1 day
+});
+
+document.getElementById('firstDropdown').addEventListener('change', function () {
+    setCookie('firstDropdown', this.value, 1); // Store for 1 day
+});
+
+document.getElementById('secondDropdown').addEventListener('change', function () {
+    setCookie('secondDropdown', this.value, 1); // Store for 1 day
+});
+
+// Restore dropdown selections on page load
+document.addEventListener('DOMContentLoaded', function () {
+    const category = getCookie('categorySelector');
+    const first = getCookie('firstDropdown');
+    const second = getCookie('secondDropdown');
+
+    if (category) {
+        const categorySelector = document.getElementById('categorySelector');
+        categorySelector.value = category;
+
+        // Populate the first dropdown
+        toggleSelection().then(() => {
+            const firstDropdown = document.getElementById('firstDropdown');
+            if (first) {
+                firstDropdown.value = first;
+
+                // Populate the second dropdown
+                updateSecondDropdown().then(() => {
+                    const secondDropdown = document.getElementById('secondDropdown');
+                    if (second) {
+                        secondDropdown.value = second;
+
+                        // Load the chart after setting all selections
+                        loadChart();
+                    }
+                });
+            }
+        });
+    }
+});
+
+// Update toggleSelection to return a Promise
+function toggleSelection() {
+    const category = document.getElementById('categorySelector').value;
+    if (!category) return Promise.resolve();
+
+    return axios
+        .get(`/${category}s`)
+        .then(function (response) {
+            const dropdown = document.getElementById('firstDropdown');
+            dropdown.innerHTML = '<option value="">Make selection</option>';
+            originalOptions.firstDropdown = response.data;
+
+            response.data.forEach((item) => {
+                const option = new Option(item.name, item.id);
+                dropdown.appendChild(option);
+            });
+        })
+        .catch(function (error) {
+            console.error('Error loading data:', error);
+        });
+}
+
+// Update updateSecondDropdown to return a Promise
+function updateSecondDropdown() {
+    const firstDropdown = document.getElementById('firstDropdown');
+    const selectedId = firstDropdown.value;
+    if (!selectedId) return Promise.resolve();
+
+    const category = document.getElementById('categorySelector').value;
+    const relatedType = category === 'professor' ? 'module' : 'professor';
+
+    return axios
+        .get(`/relations/${relatedType}/${selectedId}`)
+        .then(function (response) {
+            const secondDropdown = document.getElementById('secondDropdown');
+            secondDropdown.innerHTML = '<option value="">Make selection</option>';
+            originalOptions.secondDropdown = response.data;
+
+            response.data.forEach((item) => {
+                const option = new Option(item.name, item.id);
+                secondDropdown.appendChild(option);
+            });
+        })
+        .catch(function (error) {
+            console.error('Error updating second dropdown:', error);
+        });
 }

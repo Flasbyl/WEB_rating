@@ -235,7 +235,7 @@ async function fetchRatings(category, firstId, secondId) {
     }
 }
 
-async function addRating(comment, rating, prof_id, sem_id, module_id, user_id) {
+async function addRating(comment, rating, prof_id, sem_id, module_id, user_id, grade = null, workload = null) {
     try {
         const { data, error } = await supabase.from('ratings').insert([{
             comment,
@@ -244,6 +244,8 @@ async function addRating(comment, rating, prof_id, sem_id, module_id, user_id) {
             sem_id,
             module_id,
             user_id,
+            grade,
+            workload,
         }]);
 
         if (error) {
@@ -259,7 +261,6 @@ async function addRating(comment, rating, prof_id, sem_id, module_id, user_id) {
     }
 }
 
-
 async function loginUser(username, password) {
     const { data: user, error } = await supabase.from('users').select('*').eq('username', username).single();
     if (error || !user) {
@@ -270,7 +271,7 @@ async function loginUser(username, password) {
       throw new Error('Invalid credentials');
     }
     return user;
-  }
+}
 
 async function registerUser(username, email, password) {
     const passwordHash = await bcrypt.hash(password, 10);
@@ -378,7 +379,6 @@ async function fetchRatingHistory(userId) {
     }
 }
 
-
 async function deleteUserAccount(userId) {
     const { error } = await supabase
         .from('users')
@@ -466,7 +466,6 @@ export async function logActivity(activityData) {
         throw err;
     }
 }
-
 
 async function fetchPrivacy(userId) {
     try {

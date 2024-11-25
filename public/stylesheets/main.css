@@ -1,3 +1,4 @@
+/* General Reset */
 * {
   margin: 0;
   padding: 0;
@@ -20,43 +21,39 @@ body, html {
   --color-primary-hover: #0056b3;
 }
 
+/* Light Mode */
 body.light-mode {
   background-color: var(--color-light-bg);
   color: var(--color-light-text);
 }
 
+/* Dark Mode */
 body.dark-mode {
   background-color: var(--color-dark-bg);
   color: var(--color-dark-text);
 }
 
+/* Buttons */
 button {
   background-color: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
 }
 
 button:hover {
   background-color: var(--color-primary-hover);
 }
 
-body.light-mode {
-  background-color: #fff;
-  color: #000;
+button:focus {
+  outline: 2px solid var(--color-primary);
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.5);
 }
 
-body.dark-mode {
-  background-color: #121212;
-  color: #f5f5f5;
-}
-
-a:focus, button:focus {
-  outline: 2px solid #007BFF;
-  outline-offset: 2px;
-}
-
-body.dark-mode a:focus, body.dark-mode button:focus {
-  outline: 2px solid #0056b3;
-}
-
+/* Scrollbar Customization */
 body.dark-mode ::-webkit-scrollbar {
   width: 12px;
 }
@@ -70,32 +67,29 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
   background-color: #777;
 }
 
-button:hover {
-  filter: brightness(0.9);
-}
-
+/* Grid Layout */
 .grid-container {
   display: grid;
-  grid-template-columns: 1fr 5fr; /* Sidebar takes 1/5 and main area takes 4/5 */
-  grid-template-rows: auto 1fr;   /* Top bar is auto-height and content fills remaining height */
+  grid-template-columns: 1fr 5fr;
+  grid-template-rows: auto 1fr;
   gap: 10px;
-  height: 100vh; /* Full viewport height */
-  overflow-y: auto; /* Ensures the content can scroll */
+  height: 100vh;
+  overflow-y: auto;
 }
 
-/* Topbar styling */
+/* Topbar */
 .topbar {
   display: flex;
-  justify-content: space-between;  /* Spread items between the left and right */
-  align-items: center;             /* Vertically center the content */
+  justify-content: space-between;
+  align-items: center;
   padding: 10px 20px;
   background-color: #f4f4f4;
   border-bottom: 1px solid #ccc;
   border-left: 1px solid #ccc;
-  height: 40px;                    /* Set height for the topbar */
+  height: 50px;
   position: sticky;
-  top: 0px;
-  z-index: 3;                      /* Make sure the topbar stays above content */
+  top: 0;
+  z-index: 3;
 }
 
 body.dark-mode .topbar {
@@ -103,34 +97,28 @@ body.dark-mode .topbar {
   border-color: #444;
 }
 
-#dataVisualizationHeading {
-  font-weight: bold;
-  font-size: 18px;
-  margin-right: auto;              /* Ensures title stays on the left */
-}
-
 .topbar a {
-  margin-left: 10px;               /* Adds space between Login and Register */
   color: inherit;
   text-decoration: none;
+  margin-left: 15px;
+  font-weight: bold;
 }
 
 .topbar a:hover {
   text-decoration: underline;
 }
 
-/* Sidebar styling */
+/* Sidebar */
 .sidebar {
-  grid-row: 1 / span 2;          /* Sidebar spans both rows in the grid */
+  grid-row: 1 / span 2;
   padding: 20px;
   border: 1px solid #ccc;
   background-color: #f4f4f4;
   position: sticky;
-  top: 0px;
-  height: 100vh;                 /* Ensure sidebar takes the full height of the viewport */
-  overflow-y: auto;              /* Sidebar can scroll internally if needed */
-  z-index: 2;                    /* Ensure the sidebar stays above content but below topbar */
-  box-sizing: border-box;        /* Ensure padding and border are included in the total height */
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 body.dark-mode .sidebar {
@@ -138,57 +126,32 @@ body.dark-mode .sidebar {
   border-color: #444;
 }
 
-/* Sidebar input and select */
-.sidebar input {
-  display: block;
-  width: 67.5%;
-  margin-bottom: 5px;
-}
-
-.sidebar select {
-  display: block;
-  width: 70%;
-  margin-bottom: 5px;
-}
-
-/* Tabs in the sidebar */
 .sidebar ul {
   list-style: none;
   padding: 0;
 }
 
-.sidebar ul li {
-  margin-bottom: 10px;
-}
-
 .sidebar ul li a {
-  color: inherit;
+  display: block;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 4px;
   text-decoration: none;
   font-weight: bold;
-  padding: 10px;
-  display: block;
-  border-radius: 4px;
-  transition: background-color 0.3s;
+  color: inherit;
+  transition: background-color 0.3s ease-in-out;
 }
 
 .sidebar ul li a:hover {
-  background-color: #e8e8e8;
+  background-color: var(--color-primary-hover);
+  color: #fff;
 }
 
 body.dark-mode .sidebar ul li a:hover {
   background-color: #444;
 }
 
-.sidebar ul li a.active {
-  background-color: #007BFF;
-  color: #fff;
-}
-
-body.dark-mode .sidebar ul li a.active {
-  background-color: #0056b3;
-}
-
-/* Main area styling */
+/* Main Area */
 .main-area {
   padding: 20px;
   border: 1px solid #ccc;
@@ -200,62 +163,151 @@ body.dark-mode .main-area {
   border-color: #444;
 }
 
-.main-area h1, h2 {
-  margin-top: 0;
-}
-
-.main-area form {
+.main-area h1, h2, p {
   margin-bottom: 20px;
 }
 
-.main-area form label {
+/* Input Fields */
+input, select, textarea {
   display: block;
-  margin-top: 10px;
-  font-weight: bold;
-}
-
-.main-area form input, .main-area form select {
   width: 100%;
-  margin-bottom: 10px;
-  padding: 8px;
+  padding: 10px;
+  margin-bottom: 15px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  background-color: #fff;
+  font-size: 14px;
+  font-family: Arial, sans-serif;
 }
 
-body.dark-mode .main-area form input, body.dark-mode .main-area form select {
-  background-color: #333;
-  border-color: #555;
-  color: #f5f5f5;
+textarea {
+  min-height: 50px;
+  max-height: 200px;
+  resize: none;
+  overflow-y: auto;
 }
 
-.main-area form button {
-  padding: 10px 20px;
-  background-color: #007BFF;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.main-area form button:hover {
-  background-color: #0056b3;
-}
-
-/* Display area styling */
-.display-area {
+/* Sliding Panel */
+#slidingPanel {
+  position: fixed;
+  bottom: -100%;
+  left: 0;
+  height: 60%;
+  background: #f4f4f4;
+  border-top: 2px solid #ccc;
+  border-right: 2px solid #ccc;
   padding: 20px;
-  border: 1px solid #ccc;
-  background-color: #e8e8e8;
-  overflow-y: auto; /* Scrollable display area */
+  overflow-y: auto;
+  z-index: 1000;
+  transition: bottom 0.3s ease-in-out;
 }
 
-body.dark-mode .display-area {
+body.dark-mode #slidingPanel {
   background-color: #333;
   border-color: #444;
 }
 
-/* Transition for dark mode */
-body, .topbar, .sidebar, .main-area, .display-area {
-  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+#slidingPanel.active {
+  bottom: 0;
+}
+
+#slidingPanel button[type="submit"] {
+  width: calc(100% - 40px);
+  margin: 0 auto;
+  display: block;
+}
+
+.menu__toggler {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999;
+  width: 80px; /* Adjust width to fit "Post" text */
+  height: 40px; /* Adjust height for better appearance */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #007BFF;
+  color: #fff;
+  border: none;
+  border-radius: 13%;
+  font-size: 16px; /* Add font size for text */
+  font-weight: bold; /* Make the text stand out */
+  outline: none;
+  transition: background-color 0.3s ease;
+}
+
+.menu__toggler:hover {
+  background-color: #0056b3;
+}
+
+.menu__toggler.active {
+  background-color: #0056b3;
+}
+
+/* Modal Styling */
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 80%;
+  max-width: 400px;
+  padding: 20px;
+  display: none;
+}
+
+.modal-content {
+  text-align: center;
+}
+
+.modal a.button {
+  display: inline-block;
+  margin: 10px;
+  padding: 10px 20px;
+  background-color: #007BFF;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.modal a.button:hover {
+  background-color: #0056b3;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: none;
+}
+
+.modal-overlay.active,
+.modal.active {
+  display: block;
+}
+
+/* Modal Close Button */
+.modal .close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  cursor: pointer;
+}
+
+.modal .close:hover {
+  color: #007BFF;
 }

@@ -1,9 +1,347 @@
+Filename: home.js
+Content:
+let chartInstance = null;
+let originalOptions = {
+    firstDropdown: [],
+    secondDropdown: [],
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    loadSemester();
+});
+
+function toggleSelection() {
+    const category = document.getElementById('categorySelector').value;
+    if (!category) return;
+
+    axios
+        .get(`/${category}s`)
+        .then(function (response) {
+            const dropdown = document.getElementById('firstDropdown');
+            dropdown.innerHTML = '<option value="">Make selection</option>';
+            originalOptions.firstDropdown = response.data;
+
+            response.data.forEach((item) => {
+                const option = new Option(item.name, item.id);
+                dropdown.appendChild(option);
+            });
+        })
+        .catch(function (error) {
+            console.error('Error loading data:', error);
+        });
+}
+
+function updateSecondDropdown() {
+    const firstDropdown = document.getElementById('firstDropdown');
+    const selectedId = firstDropdown.value;
+    if (!selectedId) return;
+
+    const category = document.getElementById('categorySelector').value;
+    const relatedType = category === 'professor' ? 'module' : 'professor';
+
+    axios
+        .get(`/relations/${relatedType}/${selectedId}`)
+        .then(function (response) {
+            const secondDropdown = document.getElementById('secondDropdown');
+            secondDropdown.innerHTML = '<option value="">Make selection</option>';
+            originalOptions.secondDropdown = response.data;
+
+            response.data.forEach((item) => {
+                const option = new Option(item.name, item.id);
+                secondDropdown.appendChild(option);
+            });
+        })
+        .catch(function (error) {
+            console.error('Error updating second dropdown:', error);
+        });
+}
+
+function filterDropdown(dropdownId, searchTerm) {
+    const dropdown = document.getElementById(dropdownId);
+    const originalList = originalOptions[dropdownId];
+    const filteredList = originalList.filter((item) =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    dropdown.innerHTML = '<option value="">Make selection</option>';
+    filteredList.forEach((item) => {
+        const option = new Option(item.name, item.id);
+        dropdown.appendChild(option);
+    });
+}
+
+function loadChart() {
+    const category = document.getElementById('categorySelector').value;
+    const firstId = document.getElementById('firstDropdown').value;
+    const secondId = document.getElementById('secondDropdown').value;
+    if (!category || !firstId || !secondId) return;
+
+    const ctx = document.getElementById('ratingChart')?.getContext('2d');
+    if (!ctx) {
+        console.error('Canvas element with id "ratingChart" is not found in the DOM.');
+        return;
+    }
+
+    axios
+        .get(`/chart?category=${category}&firstId=${firstId}&secondId=${secondId}`)
+        .then(function (response) {
+            const { ratingData, profIdValue, moduleIdValue } = response.data;
+
+            document.getElementById('prof_id_hidden').value = profIdValue;
+            document.getElementById('module_id_hidden').value = moduleIdValue;
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            ratingData.scatter.forEach((d) => (d.x = Number(d.x)));
+            ratingData.curve.forEach((d) => (d.x = Number(d.x)));
+
+            chartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            type: 'scatter',
+                            label: 'Individual Ratings',
+                            data: ratingData.scatter,
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            showLine: false,
+                        },
+                        {
+                            type: 'line',
+                            label: 'Average Ratings',
+                            data: ratingData.curve,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            fill: false,
+                            tension: 0.25,
+                        },
+                    ],
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'Semester ID',
+                            },
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Rating',
+                            },
+                        },
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        },
+                    },
+                },
+            });
+        })
+        .catch(function (error) {
+            console.error('Error loading chart data:', error);
+        });
+}
+
+function loadSemester() {
+    axios
+        .get('/semester')
+        .then(function (response) {
+            const dropdown = document.getElementById('sem_id');
+            const selectedValue = dropdown.value;
+            dropdown.innerHTML = '<option value="">Select Semester</option>';
+            response.data.forEach((semester) => {
+                const option = new Option(semester.sem_name, semester.sem_id);
+                dropdown.appendChild(option);
+            });
+            dropdown.value = selectedValue;
+            document.getElementById('sem_id_hidden').value = selectedValue;
+        })
+        .catch(function (error) {
+            console.error('Error loading semesters:', error);
+        });
+
+    const dropdown = document.getElementById('sem_id');
+    dropdown.addEventListener('change', function () {
+        const selectedValue = dropdown.value;
+        document.getElementById('sem_id_hidden').value = selectedValue;
+    });
+}
+
+// Cookie Helper Functions
+function setCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = name + "=" + value + ";" + expires + ";path=/";
+}
+
+function getCookie(name) {
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const cookies = decodedCookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        let cookie = cookies[i].trim();
+        if (cookie.indexOf(name + "=") === 0) {
+            return cookie.substring(name.length + 1);
+        }
+    }
+    return "";
+}
+
+// Save dropdown selections to cookies
+document.getElementById('categorySelector').addEventListener('change', function () {
+    setCookie('categorySelector', this.value, 1); // Store for 1 day
+});
+
+document.getElementById('firstDropdown').addEventListener('change', function () {
+    setCookie('firstDropdown', this.value, 1); // Store for 1 day
+});
+
+document.getElementById('secondDropdown').addEventListener('change', function () {
+    setCookie('secondDropdown', this.value, 1); // Store for 1 day
+});
+
+// Restore dropdown selections on page load
+document.addEventListener('DOMContentLoaded', function () {
+    const category = getCookie('categorySelector');
+    const first = getCookie('firstDropdown');
+    const second = getCookie('secondDropdown');
+
+    if (category) {
+        const categorySelector = document.getElementById('categorySelector');
+        categorySelector.value = category;
+
+        // Populate the first dropdown
+        toggleSelection().then(() => {
+            const firstDropdown = document.getElementById('firstDropdown');
+            if (first) {
+                firstDropdown.value = first;
+
+                // Populate the second dropdown
+                updateSecondDropdown().then(() => {
+                    const secondDropdown = document.getElementById('secondDropdown');
+                    if (second) {
+                        secondDropdown.value = second;
+
+                        // Load the chart after setting all selections
+                        loadChart();
+                    }
+                });
+            }
+        });
+    }
+});
+
+// Update toggleSelection to return a Promise
+function toggleSelection() {
+    const category = document.getElementById('categorySelector').value;
+    if (!category) return Promise.resolve();
+
+    return axios
+        .get(`/${category}s`)
+        .then(function (response) {
+            const dropdown = document.getElementById('firstDropdown');
+            dropdown.innerHTML = '<option value="">Make selection</option>';
+            originalOptions.firstDropdown = response.data;
+
+            response.data.forEach((item) => {
+                const option = new Option(item.name, item.id);
+                dropdown.appendChild(option);
+            });
+        })
+        .catch(function (error) {
+            console.error('Error loading data:', error);
+        });
+}
+
+// Update updateSecondDropdown to return a Promise
+function updateSecondDropdown() {
+    const firstDropdown = document.getElementById('firstDropdown');
+    const selectedId = firstDropdown.value;
+    if (!selectedId) return Promise.resolve();
+
+    const category = document.getElementById('categorySelector').value;
+    const relatedType = category === 'professor' ? 'module' : 'professor';
+
+    return axios
+        .get(`/relations/${relatedType}/${selectedId}`)
+        .then(function (response) {
+            const secondDropdown = document.getElementById('secondDropdown');
+            secondDropdown.innerHTML = '<option value="">Make selection</option>';
+            originalOptions.secondDropdown = response.data;
+
+            response.data.forEach((item) => {
+                const option = new Option(item.name, item.id);
+                secondDropdown.appendChild(option);
+            });
+        })
+        .catch(function (error) {
+            console.error('Error updating second dropdown:', error);
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const openPanelButton = document.getElementById('openPanel');
+    const slidingPanel = document.getElementById('slidingPanel');
+
+    openPanelButton.addEventListener('click', () => {
+        slidingPanel.classList.add('open');
+    });
+
+    slidingPanel.addEventListener('submit', (event) => {
+        event.preventDefault(); // Prevent default form submission for now
+        // Add your form submission logic here
+
+        // Close the sliding panel after submission
+        slidingPanel.classList.remove('open');
+    });
+});
+
+----------------------------------------
+Filename: sliding-panel.js
+Content:
+document.addEventListener('DOMContentLoaded', function () {
+    const openButton = document.getElementById('openPanelButton');
+    const slidingPanel = document.getElementById('slidingPanel');
+  
+    // Open panel
+    openButton.addEventListener('click', function () {
+      slidingPanel.classList.add('active');
+    });
+  
+    // Close panel when form is submitted
+    slidingPanel.querySelector('form').addEventListener('submit', function () {
+      slidingPanel.classList.remove('active');
+    });
+  
+    // Optional: Close panel when clicking outside
+    document.addEventListener('click', function (event) {
+      if (
+        !slidingPanel.contains(event.target) &&
+        !openButton.contains(event.target) &&
+        slidingPanel.classList.contains('active')
+      ) {
+        slidingPanel.classList.remove('active');
+      }
+    });
+  });
+  
+----------------------------------------
 Filename: app.js
 Content:
 import dotenv from 'dotenv';
 dotenv.config();
 
 import {
+    supabase,
     addRating,
     fetchRatings,
     fetchProfessors,
@@ -22,7 +360,8 @@ import {
     deleteUserAccount,
     fetchUserPreferences,
     updateUserPreferences,
-    fetchActivityLogs
+    fetchActivityLogs,
+    logActivity
 } from './db.js';
 
 import express from 'express';
@@ -40,36 +379,14 @@ const app = express();
 
 // Set Pug as the view engine
 app.set('view engine', 'pug');
-app.set('views', path.join(__dirname, 'views')); // Ensure correct path to views directory
+app.set('views', path.join(__dirname, 'views'));
 
 // Middleware to serve static files from 'public' directory
 app.use(express.static(path.join(__dirname, 'public'))); // Ensure correct path to public directory
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-import { logActivity } from './db.js'; // Assume this function saves activity data to the database
-
-app.use(async (req, res, next) => {
-    const activityData = {
-        user_id: req.session?.user?.user_id || null,
-        username: req.session?.user?.username || null,
-        timestamp: new Date().toISOString(),
-        http_method: req.method,
-        url: req.originalUrl,
-        ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
-        user_agent: req.headers['user-agent'],
-    };
-
-    try {
-        await logActivity(activityData);
-        console.log(`[Activity Logged]: ${JSON.stringify(activityData)}`);
-    } catch (err) {
-        console.error('Failed to log activity:', err);
-    }
-    next();
-});
-
-
+// Session middleware
 app.use(session({
     secret: process.env.SECRET_KEY,
     resave: false,
@@ -77,6 +394,35 @@ app.use(session({
     cookie: { secure: false }
 }));
 
+// Activity logging middleware
+app.use(async (req, res, next) => {
+    const user = req.session?.user;
+
+    if (user) {
+        const activityData = {
+            user_id: user.id,
+            username: user.username,
+            timestamp: new Date().toISOString(),
+            http_method: req.method,
+            url: req.originalUrl,
+            ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+            user_agent: req.headers['user-agent'],
+        };
+
+        try {
+            await logActivity(activityData);
+            console.log(`[Activity Logged]: ${JSON.stringify(activityData)}`);
+        } catch (err) {
+            console.error('Failed to log activity:', err);
+        }
+    } else {
+        console.log('No user session; skipping activity logging.');
+    }
+
+    next();
+});
+
+// route definitions
 app.get('/profile', (req, res) => {
     const user = req.session.user;
     if (!user) {
@@ -160,8 +506,54 @@ app.get('/profile/history', async (req, res) => {
     }
 });
 
-app.get('/profile/privacy', (req, res) => {
-    res.render('privacy', { activeTab: 'privacy' });
+app.get('/profile/privacy', async (req, res) => {
+    console.log('Request received for /profile/privacy');
+    if (!req.session.user) {
+        console.log('No session user found. Redirecting to login.');
+        return res.redirect('/login');
+    }
+
+    const userId = req.session.user.id;
+
+    try {
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('visibility')
+            .eq('id', userId)
+            .single();
+
+        if (error) throw error;
+
+        console.log('Fetched user visibility:', user.visibility);
+        res.render('privacy', { user: { ...req.session.user, visibility: user.visibility }, activeTab: 'privacy' });
+    } catch (err) {
+        console.error('Error loading privacy settings:', err);
+        res.status(500).send('Error loading privacy settings');
+    }
+});
+
+app.post('/profile/privacy/update', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).send('You must be logged in to update your profile.');
+    }
+
+    const { visibility } = req.body;
+    try {
+        const userId = req.session.user.id;
+        const { error } = await supabase
+            .from('users')
+            .update({ visibility })
+            .eq('id', userId);
+
+        if (error) throw error;
+
+        // Update the session with new user data
+        req.session.user = { ...req.session.user, visibility };
+        res.redirect('/profile/privacy');
+    } catch (err) {
+        console.error('Error updating privacy:', err);
+        res.status(500).send('Error updating privacy');
+    }
 });
 
 app.post('/profile/delete', async (req, res) => {
@@ -205,6 +597,33 @@ app.post('/register', async (req, res) => {
     }
 });
 
+app.get('/resetpassword', (req, res) => {
+    res.render('resetpassword');
+});
+
+app.post('/resetpassword', async (req, res) => {
+    const { email, username } = req.body;
+
+    try {
+        if (!email && !username) {
+            return res.status(400).send('Please provide a username or email.');
+        }
+
+        // Attempt to reset password based on either username or email
+        const identifier = email || username;
+        const result = await resetPassword(identifier);
+
+        if (!result) {
+            return res.status(404).send('User not found.');
+        }
+
+        res.send(`Password reset instructions sent to ${email || username}.`);
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        res.status(500).send('Error resetting password.');
+    }
+});
+
 app.get('/login', async (req, res) => {
     res.render('login', { user: req.session.user });
 });
@@ -228,7 +647,43 @@ app.get('/logout', (req, res) => {
 
 app.get('/home', async (req, res) => {
     try {
-        res.render('home', { user: req.session.user });
+        const { profIdValue, moduleIdValue } = req.query;
+
+        // Fetch initial dropdown options
+        const firstDropdown = await fetchProfessors('*');
+        const secondDropdown = profIdValue ? await fetchModules('*') : [];
+
+        const originalOptions = {
+            firstDropdown,
+            secondDropdown,
+        };
+
+        // Grade and workload options
+        const gradeOptions = {
+            3.5: 'Failed / F',
+            4.0: 'E',
+            4.5: 'D',
+            5.0: 'C',
+            5.5: 'B',
+            6.0: 'A',
+        };
+
+        const workloadOptions = {
+            1: 'Walk in the Park',
+            2: 'Manageable',
+            3: 'Moderate Effort',
+            4: 'Challenging',
+            5: 'Pain and Suffering',
+        };
+
+        res.render('home', {
+            user: req.session.user,
+            selectedProfIdValue: profIdValue || '',
+            selectedModuleIdValue: moduleIdValue || '',
+            originalOptions,
+            gradeOptions,
+            workloadOptions,
+        });
     } catch (error) {
         console.error('Error rendering home:', error);
         res.status(500).send('Internal Server Error');
@@ -343,18 +798,23 @@ app.get('/semester', async (req, res) => {
     }
 });
 
-// post new rating to sql db
 app.post('/submit-rating', async (req, res) => {
     if (!req.session.user) {
         return res.status(401).send('Please login to submit ratings');
     }
 
-    const { comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden } = req.body;
-    console.log('body app.js line 199:', req.body)
+    const { comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden, grade, workload } = req.body;
+
     try {
-        await addRating(comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden);
-        res.redirect('/home');
+        const user_id = req.session.user.id;
+
+        // Save rating along with grade and workload
+        await addRating(comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden, user_id, grade, workload);
+
+        // Redirect back to the home page with the selected dropdowns
+        res.redirect(`/home?profIdValue=${prof_id_hidden}&moduleIdValue=${module_id_hidden}`);
     } catch (err) {
+        console.error('Error submitting rating:', err);
         res.status(500).send('Error submitting rating');
     }
 });
@@ -378,39 +838,51 @@ const supabaseUrl = 'https://jqnesxzpfsfxzqnudtig.supabase.co';
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function fetchProfessors(profName) {
+async function fetchProfessors(columns = '*') {
     try {
         const { data, error } = await supabase
             .from('professors')
-            .select(profName);
+            .select(columns);
 
         if (error) {
             console.error('Error fetching professors:', error);
-            return [];
+            return []; // Return an empty array on error
         }
-        console.log('line 23 db.js: Fetched professors:', data[0], '...');
+
+        if (!data || data.length === 0) {
+            console.warn('No professors found.');
+            return []; // Return an empty array if no data
+        }
+
+        console.log(`line 23 db.js: Fetched ${data.length} professors.`);
         return data;
     } catch (error) {
         console.error('Unexpected error fetching professors:', error);
-        return [];
+        return []; // Return an empty array on unexpected error
     }
 }
 
-async function fetchModules(moduleName) {
+async function fetchModules(columns = '*') {
     try {
         const { data, error } = await supabase
             .from('modules')
-            .select(moduleName);
+            .select(columns);
 
         if (error) {
             console.error('Error fetching modules:', error);
-            return [];
+            return []; // Return an empty array on error
         }
-        console.log('line 41 db.js: Fetched modules:', data[0], '...');
+
+        if (!data || data.length === 0) {
+            console.warn('No modules found.');
+            return []; // Return an empty array if no data
+        }
+
+        console.log(`line 41 db.js: Fetched ${data.length} modules.`);
         return data;
     } catch (error) {
         console.error('Unexpected error fetching modules:', error);
-        return [];
+        return []; // Return an empty array on unexpected error
     }
 }
 
@@ -591,20 +1063,30 @@ async function fetchRatings(category, firstId, secondId) {
     }
 }
 
-async function addRating(comment, rating, prof_id, sem_id, module_id) {
-    console.log('line 228: comment:', comment)
-    console.log('line 228: rating:', rating)
-    console.log('line 228: prof hidden:', prof_id)
-    console.log('line 228: sem hidden:', sem_id)
-    console.log('line 228: mod hidden:', module_id)
+async function addRating(comment, rating, prof_id, sem_id, module_id, user_id, grade = null, workload = null) {
+    try {
+        const { data, error } = await supabase.from('ratings').insert([{
+            comment,
+            rating,
+            prof_id,
+            sem_id,
+            module_id,
+            user_id,
+            grade,
+            workload,
+        }]);
 
-    const { data, error } = await supabase.from('ratings').insert([{ comment, rating, prof_id, sem_id, module_id}]);
-    console.log('line 229 db.js:', comment, rating, prof_id, sem_id, module_id)
-    if (error) {
-        console.error('Error inserting rating:', error);
+        if (error) {
+            console.error('Error inserting rating:', error);
+            throw error;
+        }
+
+        console.log('Rating successfully added:', data);
+        return data;
+    } catch (error) {
+        console.error('Unexpected error adding rating:', error);
         throw error;
     }
-    return data;
 }
 
 async function loginUser(username, password) {
@@ -617,7 +1099,7 @@ async function loginUser(username, password) {
       throw new Error('Invalid credentials');
     }
     return user;
-  }
+}
 
 async function registerUser(username, email, password) {
     const passwordHash = await bcrypt.hash(password, 10);
@@ -629,33 +1111,45 @@ async function registerUser(username, email, password) {
     return data;
 }
 
-async function resetPassword(userId, currentPassword, newPassword) {
-    const { data: user, error } = await supabase
-        .from('users')
-        .select('password_hash')
-        .eq('id', userId)
-        .single();
+async function resetPassword(identifier) {
+    try {
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('id, email')
+            .or(`username.eq.${identifier},email.eq.${identifier}`)
+            .single();
 
-    if (error || !user) {
-        console.error('Error fetching user for password reset:', error);
-        return false;
+        if (error || !user) {
+            console.error('User not found for reset:', error);
+            return null;
+        }
+
+        const tempPassword = Math.random().toString(36).substring(2, 8); // e.g., "temp123"
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ password_hash: hashedPassword })
+            .eq('id', user.id);
+
+        if (updateError) {
+            console.error('Error updating password:', updateError);
+            return null;
+        }
+
+        await sendPasswordResetEmail(user.email, tempPassword);
+
+        console.log(`Temporary password sent to ${user.email}`);
+        return { email: user.email, tempPassword };
+    } catch (error) {
+        console.error('Error during password reset logic:', error);
+        throw error;
     }
+}
 
-    const match = await bcrypt.compare(currentPassword, user.password_hash);
-    if (!match) return false;
-
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
-    const { error: updateError } = await supabase
-        .from('users')
-        .update({ password_hash: newPasswordHash })
-        .eq('id', userId);
-
-    if (updateError) {
-        console.error('Error updating password:', updateError);
-        throw updateError;
-    }
-
-    return true;
+async function sendPasswordResetEmail(email, resetLink) {
+    // Replace this with actual email service logic
+    console.log(`Sending password reset email to ${email} with link: ${resetLink}`);
 }
 
 async function updateUserProfile(userId, username, email, visibility) {
@@ -695,12 +1189,22 @@ async function updatePreferences(userId, preferences) {
 }
 
 async function fetchRatingHistory(userId) {
-    const { data, error } = await supabase
-        .from('ratings')
-        .select('*')
-        .eq('user_id', userId);
-    if (error) throw error;
-    return data;
+    try {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select('id, comment, rating, prof_id, sem_id, module_id, created_at')
+            .eq('user_id', userId);
+
+        if (error) {
+            console.error('Error fetching rating history:', error);
+            throw error;
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Unexpected error fetching rating history:', error);
+        throw error;
+    }
 }
 
 async function deleteUserAccount(userId) {
@@ -752,6 +1256,51 @@ async function fetchActivityLogs(userId) {
             .from('activity_logs')
             .select('*')
             .eq('user_id', userId)
+            .eq('visibility');
+
+        if (error) {
+            console.error('Error fetching privacy:', error);
+            return [];
+        }
+        return data;
+    } catch (error) {
+        console.error('Unexpected error fetching privacy:', error);
+        return [];
+    }
+}
+
+export async function logActivity(activityData) {
+    const { user_id, action } = activityData;
+
+    try {
+        const { data, error } = await supabase
+            .from('activity')
+            .insert([
+                {
+                    user_id,
+                    action, // Simplify to include only the relevant columns
+                    created_at: new Date().toISOString() // Optional: Supabase can auto-generate this
+                }
+            ]);
+
+        if (error) {
+            console.error('Error logging activity to database:', error);
+            throw error;
+        }
+
+        return data;
+    } catch (err) {
+        console.error('Unexpected error during activity logging:', err);
+        throw err;
+    }
+}
+
+async function fetchPrivacy(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('user_id', userId)
             .order('timestamp', { ascending: false });
 
         if (error) {
@@ -765,29 +1314,8 @@ async function fetchActivityLogs(userId) {
     }
 }
 
-export async function logActivity(activityData) {
-    const { user_id, username, timestamp, http_method, url, ip_address, user_agent } = activityData;
-
-    const { data, error } = await supabase.from('activity').insert([{
-        user_id,
-        username,
-        timestamp,
-        http_method,
-        url,
-        ip_address,
-        user_agent,
-    }]);
-
-    if (error) {
-        console.error('Error logging activity:', error);
-        throw error;
-    }
-
-    return data;
-}
-
-
 export {
+    supabase,
     addRating,
     fetchRatings,
     fetchProfessors,
@@ -806,7 +1334,8 @@ export {
     deleteUserAccount,
     fetchUserPreferences,
     updateUserPreferences,
-    fetchActivityLogs
+    fetchActivityLogs,
+    fetchPrivacy
 };
 
 ----------------------------------------

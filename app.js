@@ -310,7 +310,7 @@ app.get('/home', async (req, res) => {
     try {
         const { profIdValue, moduleIdValue } = req.query;
 
-        // Fetch initial options for dropdowns (mock example; replace with your logic)
+        // Fetch initial dropdown options
         const firstDropdown = await fetchProfessors('*');
         const secondDropdown = profIdValue ? await fetchModules('*') : [];
 
@@ -319,11 +319,31 @@ app.get('/home', async (req, res) => {
             secondDropdown,
         };
 
+        // Grade and workload options
+        const gradeOptions = {
+            3.5: 'Failed / F',
+            4.0: 'E',
+            4.5: 'D',
+            5.0: 'C',
+            5.5: 'B',
+            6.0: 'A',
+        };
+
+        const workloadOptions = {
+            1: 'Walk in the Park',
+            2: 'Manageable',
+            3: 'Moderate Effort',
+            4: 'Challenging',
+            5: 'Pain and Suffering',
+        };
+
         res.render('home', {
             user: req.session.user,
             selectedProfIdValue: profIdValue || '',
             selectedModuleIdValue: moduleIdValue || '',
             originalOptions,
+            gradeOptions,
+            workloadOptions,
         });
     } catch (error) {
         console.error('Error rendering home:', error);
@@ -444,13 +464,15 @@ app.post('/submit-rating', async (req, res) => {
         return res.status(401).send('Please login to submit ratings');
     }
 
-    const { comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden } = req.body;
+    const { comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden, grade, workload } = req.body;
 
     try {
         const user_id = req.session.user.id;
-        await addRating(comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden, user_id);
 
-        // Redirect back to the home page with only necessary values in the query string
+        // Save rating along with grade and workload
+        await addRating(comment, rating, prof_id_hidden, sem_id_hidden, module_id_hidden, user_id, grade, workload);
+
+        // Redirect back to the home page with the selected dropdowns
         res.redirect(`/home?profIdValue=${prof_id_hidden}&moduleIdValue=${module_id_hidden}`);
     } catch (err) {
         console.error('Error submitting rating:', err);

@@ -19,31 +19,64 @@ block sidebarContent
   select(id="secondDropdown", onchange="loadChart()")
     option(value="") Make selection
 
+  // Sliding Panel
+  div#slidingPanel
+    form(action="/submit-rating" method="POST")
+      label(for='comment') Comment:
+      input(type='text' name='comment' required=true)
+
+      label(for='rating') Rating:
+      select(name='rating', required=true)
+        option(value='') Select Rating
+        each value in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+          option(value=value) #{value}
+
+      label(for='sem_id') Semester:
+      select(id='sem_id')
+        option(value='') select semester 
+
+      label(for="grade") Grade:
+      select(name="grade" required=true)
+        option(value="") Select Grade
+        option(value=6.0) 6.0 / A
+        option(value=5.5) 5.5 / B
+        option(value=5.0) 5.0 / C
+        option(value=4.5) 4.5 / D
+        option(value=4.0) 4.0 / E
+        option(value=3.5) Failed / F
+
+      label(for="workload") Workload:
+      select(name="workload" required=true)
+        option(value="") Select Workload
+        option(value=1) Walk in the Park
+        option(value=2) Manageable
+        option(value=3) Moderate Effort
+        option(value=4) Challenging
+        option(value=5) Pain and Suffering
+
+      input(type='hidden', name='prof_id_hidden', id='prof_id_hidden')
+      input(type='hidden', name='module_id_hidden', id='module_id_hidden')
+      input(type='hidden', name='sem_id_hidden', id='sem_id_hidden')
+
+      button(type="submit") Submit Rating
+
 block mainContent
   canvas#ratingChart(width='800', height='400')
 
-  p Add Rating:
-  p You must be logged in to submit a rating.
+  // Button to open sliding panel or modal
+  button.menu__toggler(type="button" id="openPanelButton") Post
 
-  form(action='/submit-rating', method='POST')
-    label(for='comment') Comment:
-    input(type='text', name='comment', required=true)
-
-    label(for='rating') Rating:
-    select(name='rating', required=true)
-      option(value='') Select Rating
-      each value in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        option(value=value) #{value}
-
-    label(for='sem_id') Semester:
-    select(id='sem_id')
-      option(value='') select semester 
-
-    input(type='hidden', name='prof_id_hidden', id='prof_id_hidden')
-    input(type='hidden', name='module_id_hidden', id='module_id_hidden')
-    input(type='hidden', name='sem_id_hidden', id='sem_id_hidden')
-
-    button(type='submit') Submit Rating
+  // Modal for unauthenticated users
+  div#loginModal.modal(style="display: none;")
+    span.close &times;
+    div.modal-content
+      h2 Notice
+      p You must be logged in to submit a rating.
+      a.button(href="/login") Login
+      a.button(href="/register") Register
 
 block scripts
   script(src='/scripts/home.js')
+  script(src='/scripts/sliding-panel.js')
+  script.
+    const user = !{JSON.stringify(user || null)};
