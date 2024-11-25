@@ -6,7 +6,7 @@
 - single entry per user per prof/mod combo -> if double post: reject submission, refer to ratings history
 - darkmode
 - x-axis
--
+- cookie for login
 
 ### Features
 
