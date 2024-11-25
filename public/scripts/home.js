@@ -36,6 +36,107 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+document.addEventListener('DOMContentLoaded', function () {
+    const loadCommentsButton = document.getElementById('loadCommentsButton');
+    const commentsContainer = document.getElementById('commentsContainer');
+
+    if (loadCommentsButton && commentsContainer) {
+        loadCommentsButton.addEventListener('click', function () {
+            const profId = document.getElementById('prof_id_hidden').value;
+            const moduleId = document.getElementById('module_id_hidden').value;
+
+            if (!profId || !moduleId) {
+                commentsContainer.innerHTML = '<p>Please select both a professor and a module to load comments.</p>';
+                return;
+            }
+
+            axios
+                .get(`/comments?prof_id_hidden=${profId}&module_id_hidden=${moduleId}`)
+                .then((response) => {
+                    const comments = response.data;
+
+                    if (comments.length === 0) {
+                        commentsContainer.innerHTML = '<p>No comments available for this selection.</p>';
+                        return;
+                    }
+
+                    commentsContainer.innerHTML = ''; // Clear existing comments
+
+                    comments.forEach((comment) => {
+                        // Create comment tile
+                        const commentTile = document.createElement('div');
+                        commentTile.style.display = 'flex';
+                        commentTile.style.flexDirection = 'column';
+                        commentTile.style.justifyContent = 'space-between';
+                        commentTile.style.padding = '15px';
+                        commentTile.style.border = '1px solid #ccc';
+                        commentTile.style.borderRadius = '8px';
+                        commentTile.style.marginBottom = '15px';
+                        commentTile.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                        commentTile.style.backgroundColor = '#f9f9f9';
+                        commentTile.style.position = 'relative';
+
+                        // Header section
+                        const header = document.createElement('div');
+                        header.style.display = 'flex';
+                        header.style.justifyContent = 'space-between';
+                        header.style.width = '100%';
+
+                        const rating = document.createElement('div');
+                        rating.textContent = `Rating: ${comment.rating || 'N/A'}`;
+                        rating.style.fontSize = '1.5rem';
+                        rating.style.fontWeight = 'bold';
+                        rating.style.color = '#007BFF';
+
+                        const date = document.createElement('div');
+                        date.textContent = new Date(comment.created_at).toLocaleDateString();
+                        date.style.fontSize = '0.9rem';
+                        date.style.color = '#555';
+                        date.style.position = 'absolute';
+                        date.style.top = '15px';
+                        date.style.right = '15px';
+
+                        header.appendChild(rating);
+                        header.appendChild(date);
+
+                        // Comment section
+                        const commentText = document.createElement('div');
+                        commentText.textContent = comment.comment || '';
+                        commentText.style.fontSize = '1rem';
+                        commentText.style.margin = '10px 0';
+                        commentText.style.color = '#333';
+
+                        // Details section
+                        const details = document.createElement('div');
+                        details.style.fontSize = '0.9rem';
+                        details.style.color = '#666';
+
+                        const grade = document.createElement('span');
+                        grade.textContent = `Grade: ${comment.grade || 'N/A'}`;
+
+                        const workload = document.createElement('span');
+                        workload.textContent = `Workload: ${comment.workload || 'N/A'}`;
+
+                        details.appendChild(grade);
+                        details.appendChild(document.createElement('br')); // Line break for spacing
+                        details.appendChild(workload);
+
+                        // Append everything to the comment tile
+                        commentTile.appendChild(header);
+                        commentTile.appendChild(commentText);
+                        commentTile.appendChild(details);
+
+                        // Append the tile to the container
+                        commentsContainer.appendChild(commentTile);
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error loading comments:', error);
+                    commentsContainer.innerHTML = '<p>Failed to load comments. Please try again later.</p>';
+                });
+        });
+    }
+});
 
 function toggleSelection() {
     const category = document.getElementById('categorySelector').value;

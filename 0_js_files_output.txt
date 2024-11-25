@@ -9,6 +9,35 @@ let originalOptions = {
 document.addEventListener('DOMContentLoaded', function () {
     loadSemester();
 });
+document.addEventListener('DOMContentLoaded', function () {
+    const toggler = document.querySelector('.menu__toggler');
+    const loginModal = document.getElementById('loginModal');
+    const closeModalButton = loginModal.querySelector('.close');
+    const isLoggedIn = typeof user !== 'undefined' && user; // Replace with actual user check logic
+
+    if (toggler && !isLoggedIn) {
+        toggler.addEventListener('click', (event) => {
+            event.preventDefault(); // Prevent opening the sliding panel
+            if (loginModal) {
+                loginModal.style.display = 'block';
+            }
+        });
+    }
+
+    // Close modal when clicking the "X" button
+    if (closeModalButton) {
+        closeModalButton.addEventListener('click', () => {
+            loginModal.style.display = 'none';
+        });
+    }
+
+    // Close modal when clicking outside of it
+    window.addEventListener('click', (event) => {
+        if (loginModal && event.target === loginModal) {
+            loginModal.style.display = 'none';
+        }
+    });
+});
 
 function toggleSelection() {
     const category = document.getElementById('categorySelector').value;
@@ -287,53 +316,62 @@ function updateSecondDropdown() {
             console.error('Error updating second dropdown:', error);
         });
 }
-
-document.addEventListener('DOMContentLoaded', function () {
-    const openPanelButton = document.getElementById('openPanel');
-    const slidingPanel = document.getElementById('slidingPanel');
-
-    openPanelButton.addEventListener('click', () => {
-        slidingPanel.classList.add('open');
-    });
-
-    slidingPanel.addEventListener('submit', (event) => {
-        event.preventDefault(); // Prevent default form submission for now
-        // Add your form submission logic here
-
-        // Close the sliding panel after submission
-        slidingPanel.classList.remove('open');
-    });
-});
-
 ----------------------------------------
 Filename: sliding-panel.js
 Content:
 document.addEventListener('DOMContentLoaded', function () {
-    const openButton = document.getElementById('openPanelButton');
+    const toggler = document.querySelector('.menu__toggler');
     const slidingPanel = document.getElementById('slidingPanel');
-  
-    // Open panel
-    openButton.addEventListener('click', function () {
-      slidingPanel.classList.add('active');
+    const sidebar = document.querySelector('.sidebar');
+    const textarea = document.querySelector('#slidingPanel form textarea');
+
+    if (textarea) {
+        textarea.addEventListener('input', function () {
+            this.style.height = 'auto'; // Reset the height to calculate the correct new height
+            this.style.height = `${this.scrollHeight}px`; // Set height to the scroll height
+        });
+    }
+
+    if (!toggler || !slidingPanel || !sidebar) {
+        console.error('Sliding panel, toggler button, or sidebar is missing.');
+        return;
+    }
+
+    // Open/Close panel and toggle button text
+    toggler.addEventListener('click', () => {
+        const isOpen = slidingPanel.classList.toggle('active'); // Toggle sliding panel visibility
+        toggler.classList.toggle('active'); // Toggle button's active state
+        toggler.textContent = isOpen ? 'Close' : 'Post'; // Update button text
     });
-  
-    // Close panel when form is submitted
-    slidingPanel.querySelector('form').addEventListener('submit', function () {
-      slidingPanel.classList.remove('active');
-    });
-  
-    // Optional: Close panel when clicking outside
-    document.addEventListener('click', function (event) {
-      if (
-        !slidingPanel.contains(event.target) &&
-        !openButton.contains(event.target) &&
-        slidingPanel.classList.contains('active')
-      ) {
-        slidingPanel.classList.remove('active');
-      }
-    });
-  });
-  
+
+    // Optional: Close panel and reset button text when form is submitted
+    const form = slidingPanel.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', () => {
+            toggler.classList.remove('active');
+            slidingPanel.classList.remove('active');
+            toggler.textContent = 'Post'; // Reset text to 'Post' after submission
+        });
+    }
+
+    // Function to update the sliding panel's width and position
+    function updateSlidingPanelWidth() {
+        if (sidebar) {
+            const sidebarWidth = sidebar.offsetWidth;
+            const sidebarLeft = sidebar.offsetLeft;
+
+            slidingPanel.style.width = `${sidebarWidth}px`; // Match the width of the sidebar
+            slidingPanel.style.left = `${sidebarLeft}px`; // Align to sidebar's position
+        }
+    }
+
+    // Adjust sliding panel on window resize
+    window.addEventListener('resize', updateSlidingPanelWidth);
+
+    // Initialize the sliding panel's width and position
+    updateSlidingPanelWidth();
+});
+
 ----------------------------------------
 Filename: app.js
 Content:

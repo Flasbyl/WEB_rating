@@ -480,6 +480,32 @@ app.post('/submit-rating', async (req, res) => {
     }
 });
 
+app.get('/comments', async (req, res) => {
+    const { prof_id_hidden, module_id_hidden } = req.query;
+
+    if (!prof_id_hidden || !module_id_hidden) {
+        return res.status(400).json({ error: 'Missing required parameters.' });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select('comment, rating, grade, workload, created_at')
+            .eq('prof_id', prof_id_hidden)
+            .eq('module_id', module_id_hidden);
+
+        if (error) {
+            console.error('Error fetching comments:', error);
+            return res.status(500).json({ error: 'Failed to fetch comments.' });
+        }
+
+        res.json(data);
+    } catch (err) {
+        console.error('Unexpected error fetching comments:', err);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

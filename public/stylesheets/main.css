@@ -311,3 +311,69 @@ body.dark-mode #slidingPanel {
 .modal .close:hover {
   color: #007BFF;
 }
+
+.comment-section {
+  margin-top: 20px;
+}
+
+#commentsContainer {
+  max-height: 300px; /* Limit the height */
+  overflow-y: auto; /* Enable vertical scrolling */
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.comment-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: #f9f9f9;
+  position: relative;
+}
+
+.comment-tile .header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.comment-tile .header .rating {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #007BFF;
+}
+
+.comment-tile .header .date {
+  font-size: 0.9rem;
+  color: #555;
+  position: absolute;
+  top: 15px;
+  right: 15px;
+}
+
+.comment-tile .comment {
+  font-size: 1rem;
+  margin: 10px 0;
+  color: #333;
+}
+
+.comment-tile .details {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.comment-tile .details span {
+  display: block;
+}
+
+.comment-tile:last-child {
+  border-bottom: none; /* Remove border for the last tile */
+}
