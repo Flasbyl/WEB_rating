@@ -69,3 +69,53 @@ function attachEditButtons() {
         });
     });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const editModal = document.getElementById('editModal');
+    const closeModalButton = editModal?.querySelector('.close');
+
+    if (editModal && closeModalButton) {
+        // Add click event listener for the close button
+        closeModalButton.addEventListener('click', () => {
+            editModal.style.display = 'none';
+        });
+
+        // Close the modal when clicking outside of it
+        window.addEventListener('click', (event) => {
+            if (event.target === editModal) {
+                editModal.style.display = 'none';
+            }
+        });
+    }
+
+    // Function to open the modal and populate fields
+    function openEditModal(rating) {
+        const { rating_id, comment, rating: ratingValue, grade, workload } = rating;
+
+        document.getElementById('editRatingId').value = rating_id;
+        document.getElementById('editComment').value = comment;
+        document.getElementById('editRating').value = ratingValue || '';
+        document.getElementById('editGrade').value = grade || '';
+        document.getElementById('editWorkload').value = workload || '';
+
+        editModal.style.display = 'block';
+    }
+
+    // Add click event listeners for edit buttons (assuming they are already rendered)
+    document.querySelectorAll('.edit-button').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            const ratingId = event.target.getAttribute('data-id');
+            
+            // Fetch the specific rating data and populate the modal
+            axios
+                .get(`/profile/history/${ratingId}`)
+                .then((response) => {
+                    const rating = response.data;
+                    openEditModal(rating);
+                })
+                .catch((error) => {
+                    console.error('Error fetching rating data:', error);
+                });
+        });
+    });
+});

@@ -520,31 +520,29 @@ app.get('/profile/history', async (req, res) => {
     }
 });
 
-app.put('/profile/history/:id', async (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).send('Unauthorized. Please log in.');
+app.get('/profile/history/:id', async (req, res) => {
+    const { id } = req.params;
+    const user = req.session.user;
+
+    if (!user) {
+        return res.status(401).send('Unauthorized');
     }
 
-    const userId = req.session.user.id;
-    const { rating_id } = req.params;
-    const { comment, rating, grade, workload } = req.body;
-
     try {
-        const { data, error } = await supabase
+        const { data: rating, error } = await supabase
             .from('ratings')
-            .update({ comment, rating, grade, workload })
-            .eq('rating_id', rating_id)
-            .eq('user_id', userId);
+            .select('*')
+            .eq('rating_id', id)
+            .single();
 
-        if (error) {
-            console.error('Error updating comment:', error);
-            return res.status(500).send('Failed to update the comment.');
+        if (error || !rating) {
+            throw new Error('Rating not found');
         }
 
-        res.json({ success: true, data });
-    } catch (error) {
-        console.error('Unexpected error updating comment:', error);
-        res.status(500).send('Failed to update the comment.');
+        res.json(rating);
+    } catch (err) {
+        console.error('Error fetching rating data:', err);
+        res.status(500).send('Failed to fetch rating data');
     }
 });
 
