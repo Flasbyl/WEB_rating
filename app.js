@@ -175,7 +175,7 @@ app.get('/profile/privacy', async (req, res) => {
 
         if (error) throw error;
 
-        console.log('Fetched user visibility:', user.visibility);
+        console.log('Fetched user visibility:', user.visibility[0], '...');
         res.render('privacy', { user: { ...req.session.user, visibility: user.visibility }, activeTab: 'privacy' });
     } catch (err) {
         console.error('Error loading privacy settings:', err);
@@ -395,9 +395,9 @@ app.get('/chart', async (req, res) => {
     const { category, firstId, secondId } = req.query;
     try {
         const { data: rawData, profIdValue, moduleIdValue } = await fetchRatings(category, firstId, secondId);
-        console.log('line 143 app.js: ==========chart===========');
-        console.log('line 144 app.js: rawData:', rawData);
-        console.log('line 145 app.js: profIdValue:', profIdValue, 'moduleIdValue:', moduleIdValue);
+        console.log('get/chart app.js: ==========chart===========');
+        console.log('get/chart app.js: rawData:', rawData[0], '...');
+        console.log('get/chart app.js: profIdValue:', profIdValue, 'moduleIdValue:', moduleIdValue);
         
         const averages = {};
         const scatterData = [];
@@ -422,9 +422,9 @@ app.get('/chart', async (req, res) => {
 
         const ratingData = { scatter: scatterData, curve: curveData };
         res.json({ ratingData, profIdValue, moduleIdValue });
-        console.log('line 168 app.js: ratingData:', ratingData);
-        console.log('line 169 app.js: scatterData:', scatterData);
-        console.log('line 170 app.js: curveData:', curveData);
+        console.log('get/chart app.js: ratingData:', ratingData);
+        console.log('get/chart app.js: scatterData:', scatterData[0], '...');
+        console.log('get/chart app.js: curveData:', curveData[0], '...');
     } catch (err) {
         console.error('Failed to fetch ratings:', err);
         res.status(500).send('Failed to load page');
@@ -434,7 +434,7 @@ app.get('/chart', async (req, res) => {
 app.get('/semester', async (req, res) => {
     try {
         const semesterData = await fetchSemesters();
-        console.log('line 181 app.js: semesterData', semesterData);
+        console.log('get/semester: app.js: semesterData', semesterData[0], '...');
         res.json(semesterData);
     } catch (error) {
         console.error('Error fetching semesters:', error);
@@ -491,7 +491,7 @@ app.get('/comments', async (req, res) => {
 
 app.get('/profile/history', async (req, res) => {
     if (!req.session.user) {
-        return res.status(401).send('Unauthorized. Please log in.');
+        return res.redirect('/login');
     }
 
     const userId = req.session.user.id;
@@ -523,23 +523,25 @@ app.get('/profile/history', async (req, res) => {
 app.get('/profile/history/:id', async (req, res) => {
     const { id } = req.params;
     const user = req.session.user;
+    const userId = req.session.user.id
+    console.log('userId:', userId);
+    console.log('user:', user);
 
     if (!user) {
-        return res.status(401).send('Unauthorized');
+        return res.redirect('/login');
     }
 
     try {
-        const { data: rating, error } = await supabase
+        const { data: data, error } = await supabase
             .from('ratings')
             .select('*')
-            .eq('rating_id', id)
-            .single();
+            .eq('user_id', userId);
 
-        if (error || !rating) {
+        if (error) {
             throw new Error('Rating not found');
         }
 
-        res.json(rating);
+        res.json(data);
     } catch (err) {
         console.error('Error fetching rating data:', err);
         res.status(500).send('Failed to fetch rating data');
@@ -548,7 +550,7 @@ app.get('/profile/history/:id', async (req, res) => {
 
 app.post('/profile/history/edit', async (req, res) => {
     if (!req.session.user) {
-        return res.status(401).send('Unauthorized. Please log in.');
+        return res.redirect('/login');
     }
 
     const { rating_id, comment, rating, grade, workload } = req.body;

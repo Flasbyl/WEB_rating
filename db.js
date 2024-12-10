@@ -26,7 +26,7 @@ async function fetchProfessors(columns = '*') {
             return []; // Return an empty array if no data
         }
 
-        console.log(`line 23 db.js: Fetched ${data.length} professors.`);
+        console.log(`fetchProfessors db.js: Fetched ${data.length} professors.`);
         return data;
     } catch (error) {
         console.error('Unexpected error fetching professors:', error);
@@ -50,7 +50,7 @@ async function fetchModules(columns = '*') {
             return []; // Return an empty array if no data
         }
 
-        console.log(`line 41 db.js: Fetched ${data.length} modules.`);
+        console.log(`fetchModules db.js: Fetched ${data.length} modules.`);
         return data;
     } catch (error) {
         console.error('Unexpected error fetching modules:', error);
@@ -68,7 +68,7 @@ async function fetchDepartments() {
             console.error('Error fetching departments:', error);
             return [];
         }
-        console.log('line 59 db.js: Fetched departments:', data[0], '...');
+        console.log('fetchDepartments db.js: Fetched departments:', data[0], '...');
         return data;
     } catch (error) {
         console.error('Unexpected error fetching departments:', error);
@@ -86,7 +86,7 @@ async function fetchSemesters() {
             console.error('Error fetching semesters:', error);
             return [];
         }
-        console.log('line 77 db.js: Fetched semesters:', data[0], '...');
+        console.log('fetchSemesters db.js: Fetched semesters:', data[0], '...');
         return data;
     } catch (error) {
         console.error('Unexpected error fetching semesters:', error);
@@ -182,7 +182,7 @@ async function fetchModProfRelations(moduleName) {
 
 async function fetchRatings(category, firstId, secondId) {
 
-    console.log('line 173 db.js: 1. category passed:', category, 'profId passed:', firstId, 'moduleId passed:', secondId);
+    console.log('fetchRatings db.js: 1. category passed:', category, 'profId passed:', firstId, 'moduleId passed:', secondId);
     
     let profId, moduleId;
     if (category === 'professor') {
@@ -193,7 +193,7 @@ async function fetchRatings(category, firstId, secondId) {
         moduleId = firstId;
     }
 
-    console.log('line 184 db.js: 2. category passed:', category, 'profId passed:', profId, 'moduleId passed:', moduleId);
+    console.log('fetchRatings db.js: 2. category passed:', category, 'profId passed:', profId, 'moduleId passed:', moduleId);
 
     // Fetch the actual IDs from the professors and modules tables
     let profIdValue, moduleIdValue;
@@ -215,7 +215,7 @@ async function fetchRatings(category, firstId, secondId) {
         return [];
     }
 
-    console.log('line 206 db.js: 3. Using profIdValue:', profIdValue, 'and moduleIdValue:', moduleIdValue);
+    console.log('fetchRatings db.js: 3. Using profIdValue:', profIdValue, 'and moduleIdValue:', moduleIdValue);
     try {
         const { data, error } = await supabase
             .from('ratings')
@@ -227,8 +227,8 @@ async function fetchRatings(category, firstId, secondId) {
             console.error('Error fetching ratings:', error);
             return [];
         }
-        console.log('line 218 db.js: Fetched ratings:', data[0], '...');
-        return { data, profIdValue, moduleIdValue };  // Return as an object
+        console.log('fetchRatings db.js: Fetched ratings:', data[0], '...');
+        return { data, profIdValue, moduleIdValue };
     } catch (error) {
         console.error('Unexpected error fetching ratings:', error);
         return [];

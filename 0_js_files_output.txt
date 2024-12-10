@@ -38,6 +38,122 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+document.addEventListener('DOMContentLoaded', function () {
+    const loadCommentsButton = document.getElementById('loadCommentsButton');
+    const commentsContainer = document.getElementById('commentsContainer');
+
+    if (loadCommentsButton && commentsContainer) {
+        loadCommentsButton.addEventListener('click', function () {
+            const profId = document.getElementById('prof_id_hidden').value;
+            const moduleId = document.getElementById('module_id_hidden').value;
+
+            if (!profId || !moduleId) {
+                commentsContainer.innerHTML = '<p>Please select both a professor and a module to load comments.</p>';
+                return;
+            }
+
+            axios
+                .get(`/comments?prof_id_hidden=${profId}&module_id_hidden=${moduleId}`)
+                .then((response) => {
+                    const comments = response.data;
+                    console.log('comment data: ', comments);
+
+                    if (comments.length === 0) {
+                        commentsContainer.innerHTML = '<p>No comments available for this selection.</p>';
+                        return;
+                    }
+
+                    commentsContainer.innerHTML = ''; // Clear existing comments
+
+                    comments.forEach((comment) => {
+                        // Translations for grade, workload, and semester
+                        const gradeTranslation =
+                            window.gradeTranslations[comment.grade] || 'N/A';
+                        const workloadTranslation =
+                            window.workloadTranslations[comment.workload] || 'N/A';
+                        const semesterTranslation =
+                            window.translateSemester(comment.sem_id);
+
+                        // Create comment tile
+                        const commentTile = document.createElement('div');
+                        commentTile.style.display = 'flex';
+                        commentTile.style.flexDirection = 'column';
+                        commentTile.style.justifyContent = 'space-between';
+                        commentTile.style.padding = '15px';
+                        commentTile.style.border = '1px solid #ccc';
+                        commentTile.style.borderRadius = '8px';
+                        commentTile.style.marginBottom = '15px';
+                        commentTile.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                        commentTile.style.backgroundColor = '#f9f9f9';
+                        commentTile.style.position = 'relative';
+
+                        // Header section
+                        const header = document.createElement('div');
+                        header.style.display = 'flex';
+                        header.style.justifyContent = 'space-between';
+                        header.style.width = '100%';
+
+                        const rating = document.createElement('div');
+                        rating.textContent = `Rating: ${comment.rating || 'N/A'}`;
+                        rating.style.fontSize = '1.5rem';
+                        rating.style.fontWeight = 'bold';
+                        rating.style.color = '#007BFF';
+
+                        const date = document.createElement('div');
+                        date.textContent = new Date(comment.created_at).toLocaleDateString();
+                        date.style.fontSize = '0.9rem';
+                        date.style.color = '#555';
+                        date.style.position = 'absolute';
+                        date.style.top = '15px';
+                        date.style.right = '15px';
+
+                        header.appendChild(rating);
+                        header.appendChild(date);
+
+                        // Comment section
+                        const commentText = document.createElement('div');
+                        commentText.textContent = comment.comment || '';
+                        commentText.style.fontSize = '1rem';
+                        commentText.style.margin = '10px 0';
+                        commentText.style.color = '#333';
+
+                        // Details section
+                        const details = document.createElement('div');
+                        details.style.fontSize = '0.9rem';
+                        details.style.color = '#666';
+
+                        const semester = document.createElement('span');
+                        semester.textContent = `Semester: ${semesterTranslation}`;
+
+                        const grade = document.createElement('span');
+                        grade.textContent = `Grade: ${gradeTranslation}`;
+
+                        const workload = document.createElement('span');
+                        workload.textContent = `Workload: ${workloadTranslation}`;
+
+                        details.appendChild(semester);
+                        details.appendChild(document.createElement('br')); // Line break for spacing
+                        details.appendChild(grade);
+                        details.appendChild(document.createElement('br'));
+                        details.appendChild(workload);
+
+                        // Append everything to the comment tile
+                        commentTile.appendChild(header);
+                        commentTile.appendChild(commentText);
+                        commentTile.appendChild(details);
+
+                        // Append the tile to the container
+                        commentsContainer.appendChild(commentTile);
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error loading comments:', error);
+                    commentsContainer.innerHTML =
+                        '<p>Failed to load comments. Please try again later.</p>';
+                });
+        });
+    }
+});
 
 function toggleSelection() {
     const category = document.getElementById('categorySelector').value;
@@ -317,6 +433,125 @@ function updateSecondDropdown() {
         });
 }
 ----------------------------------------
+Filename: profile.js
+Content:
+document.addEventListener('DOMContentLoaded', () => {
+    const historyCommentsContainer = document.getElementById('historyCommentsContainer');
+    if (historyCommentsContainer) {
+        loadUserHistory(); // Automatically load user history on page load
+    }
+});
+
+function loadUserHistory() {
+    const historyCommentsContainer = document.getElementById('historyCommentsContainer');
+
+    if (!historyCommentsContainer) return;
+
+    axios
+        .get('/profile/history/data')
+        .then((response) => {
+            const comments = response.data;
+            console.log('comment data: ', comments);
+
+            if (comments.length === 0) {
+                historyCommentsContainer.innerHTML =
+                    '<p>No history available for this user.</p>';
+                return;
+            }
+
+            historyCommentsContainer.innerHTML = ''; // Clear existing history
+            comments.forEach((comment) => {
+                // Translations for grade, workload, and semester
+                const gradeTranslation =
+                    window.gradeTranslations[comment.grade] || 'N/A';
+                const workloadTranslation =
+                    window.workloadTranslations[comment.workload] || 'N/A';
+                const semesterTranslation =
+                    window.translateSemester(comment.sem_id);
+
+                const commentTile = document.createElement('div');
+                commentTile.classList.add('comment-tile');
+                commentTile.innerHTML = `
+                    <div class="rating-header">
+                        <span class="rating">Rating: ${comment.rating}</span>
+                        <span class="semester">Semester: ${semesterTranslation}</span>
+                    </div>
+                    <div class="date-header">
+                        <span class="date">${new Date(comment.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p class="comment">${comment.comment}</p>
+                    <div class="grade-footer">
+                        <span class="grade">Grade: ${gradeTranslation}</span>
+                    </div>
+                    <div class="workload-footer">
+                        <span class="workload">Workload: ${workloadTranslation}</span>
+                    </div>
+                    <button class="edit-button" data-rating-id="${comment.rating_id}">Edit</button>
+                `;
+                historyCommentsContainer.appendChild(commentTile);
+            });
+
+            // Add event listeners to edit buttons
+            addEditListeners();
+        })
+        .catch((error) => {
+            console.error('Error loading user history:', error);
+            historyCommentsContainer.innerHTML =
+                '<p>Failed to load history. Please try again later.</p>';
+        });
+}
+
+function addEditListeners() {
+    const editButtons = document.querySelectorAll('.edit-button');
+    editButtons.forEach((button) => {
+        button.addEventListener('click', function () {
+            const ratingId = this.getAttribute('data-rating-id');
+            openEditModal(ratingId);
+        });
+    });
+}
+
+function openEditModal(ratingId) {
+    axios
+        .get(`/profile/history/${ratingId}`)
+        .then((response) => {
+            const rating = response.data;
+
+            document.getElementById('editRatingId').value = rating.rating_id;
+            document.getElementById('editComment').value = rating.comment;
+            document.getElementById('editRating').value = rating.rating || '';
+            document.getElementById('editGrade').value = rating.grade || '';
+            document.getElementById('editWorkload').value = rating.workload || '';
+
+            const editModal = document.getElementById('editModal');
+            editModal.style.display = 'block';
+        })
+        .catch((error) => {
+            console.error('Error fetching rating data:', error);
+        });
+}
+
+// Close modal functionality
+document.addEventListener('DOMContentLoaded', function () {
+    const editModal = document.getElementById('editModal');
+    const closeModalButton = editModal?.querySelector('.close');
+
+    if (editModal && closeModalButton) {
+        // Add click event listener for the close button
+        closeModalButton.addEventListener('click', () => {
+            editModal.style.display = 'none';
+        });
+
+        // Close the modal when clicking outside of it
+        window.addEventListener('click', (event) => {
+            if (event.target === editModal) {
+                editModal.style.display = 'none';
+            }
+        });
+    }
+});
+
+----------------------------------------
 Filename: sliding-panel.js
 Content:
 document.addEventListener('DOMContentLoaded', function () {
@@ -372,6 +607,42 @@ document.addEventListener('DOMContentLoaded', function () {
     updateSlidingPanelWidth();
 });
 
+----------------------------------------
+Filename: translations.js
+Content:
+// Global grade and workload translations
+window.gradeTranslations = {
+    "6.0": "A/6.0",
+    "5.5": "B/5.5",
+    "5.0": "C/5.0",
+    "4.5": "D/4.5",
+    "4.0": "E/4.0",
+    "3.5": "Failed",
+  };
+  
+  window.workloadTranslations = {
+    "1": "Walk in the Park",
+    "2": "Manageable",
+    "3": "Moderate Effort",
+    "4": "Challenging",
+    "5": "Pain and Suffering",
+  };
+
+  // Semester translation function
+window.translateSemester = function (semesterNumber) {
+    if (typeof semesterNumber !== "number" || semesterNumber < 1) {
+      return "Invalid Semester";
+    }
+  
+    const baseYear = 2024; // Starting year for the semester sequence
+    const isSpring = semesterNumber % 2 !== 0; // Odd numbers are spring (FS), even are fall (HS)
+    const offset = Math.floor((semesterNumber - 1) / 2); // Number of full years offset from baseYear
+  
+    const year = baseYear + offset;
+    const season = isSpring ? "FS" : "HS";
+  
+    return `${season}${year % 100}`; // Format as FS/HS + last two digits of the year
+  };
 ----------------------------------------
 Filename: app.js
 Content:
@@ -532,16 +803,6 @@ app.post('/profile/preferences', async (req, res) => {
 
     await updateUserPreferences(user.id, preferences);
     res.redirect('/profile/preferences');
-});
-
-app.get('/profile/history', async (req, res) => {
-    try {
-        const ratings = await fetchRatingHistory(req.session.user.id);
-        res.render('history', { ratings, activeTab: 'history' });
-    } catch (error) {
-        console.error('Error fetching history:', error);
-        res.status(500).send('Error fetching history');
-    }
 });
 
 app.get('/profile/privacy', async (req, res) => {
@@ -728,7 +989,6 @@ app.get('/home', async (req, res) => {
     }
 });
 
-// get professors
 app.get('/professors', async (req, res) => {
     try {
         const professors = await fetchProfessors('*');
@@ -739,7 +999,6 @@ app.get('/professors', async (req, res) => {
     }
 });
 
-// get modules
 app.get('/modules', async (req, res) => {
     try {
         const modules = await fetchModules('*');
@@ -750,7 +1009,6 @@ app.get('/modules', async (req, res) => {
     }
 });
 
-// get departments
 app.get('/departments', async (req, res) => {
     try {
         const departments = await fetchDepartments();
@@ -761,7 +1019,6 @@ app.get('/departments', async (req, res) => {
     }
 });
 
-// get Professor Module Relations
 app.get('/relations/professor/:profName', async (req, res) => {
     try {
         const relationsPM = await fetchModProfRelations(req.params.profName);
@@ -772,7 +1029,6 @@ app.get('/relations/professor/:profName', async (req, res) => {
     }
 });
 
-// get Module Professor Relations
 app.get('/relations/module/:moduleName', async (req, res) => {
     try {
         const relationsMP = await fetchProfModRelations(req.params.moduleName);
@@ -783,7 +1039,6 @@ app.get('/relations/module/:moduleName', async (req, res) => {
     }
 });
 
-// get data for graphs
 app.get('/chart', async (req, res) => {
     const { category, firstId, secondId } = req.query;
     try {
@@ -824,7 +1079,6 @@ app.get('/chart', async (req, res) => {
     }
 });
 
-// get semesters
 app.get('/semester', async (req, res) => {
     try {
         const semesterData = await fetchSemesters();
@@ -854,6 +1108,117 @@ app.post('/submit-rating', async (req, res) => {
     } catch (err) {
         console.error('Error submitting rating:', err);
         res.status(500).send('Error submitting rating');
+    }
+});
+
+app.get('/comments', async (req, res) => {
+    const { prof_id_hidden, module_id_hidden } = req.query;
+
+    if (!prof_id_hidden || !module_id_hidden) {
+        return res.status(400).json({ error: 'Missing required parameters.' });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select('comment, rating, grade, workload, created_at')
+            .eq('prof_id', prof_id_hidden)
+            .eq('module_id', module_id_hidden);
+
+        if (error) {
+            console.error('Error fetching comments:', error);
+            return res.status(500).json({ error: 'Failed to fetch comments.' });
+        }
+
+        res.json(data);
+    } catch (err) {
+        console.error('Unexpected error fetching comments:', err);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+app.get('/profile/history', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    const userId = req.session.user.id;
+
+    try {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select('rating_id, comment, rating, grade, workload, created_at, prof_id, module_id')
+            .eq('user_id', userId);
+
+        if (error) {
+            console.error('Error fetching user ratings history:', error);
+            return res.status(500).send('Failed to load history.');
+        }
+
+        // Serve JSON for AJAX calls
+        if (req.headers.accept && req.headers.accept.includes('application/json')) {
+            return res.json(data);
+        }
+
+        // Render Pug template for regular page load
+        res.render('history', { ratings: data, activeTab: 'history' });
+    } catch (error) {
+        console.error('Unexpected error fetching user ratings history:', error);
+        res.status(500).send('Failed to load history.');
+    }
+});
+
+app.get('/profile/history/:id', async (req, res) => {
+    const { id } = req.params;
+    const user = req.session.user;
+    const userId = req.session.user.id
+    console.log('userId:', userId);
+    console.log('user:', user);
+
+    if (!user) {
+        return res.redirect('/login');
+    }
+
+    try {
+        const { data: data, error } = await supabase
+            .from('ratings')
+            .select('*')
+            .eq('user_id', userId);
+
+        if (error) {
+            throw new Error('Rating not found');
+        }
+
+        res.json(data);
+    } catch (err) {
+        console.error('Error fetching rating data:', err);
+        res.status(500).send('Failed to fetch rating data');
+    }
+});
+
+app.post('/profile/history/edit', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    const { rating_id, comment, rating, grade, workload } = req.body;
+
+    try {
+        const { error } = await supabase
+            .from('ratings')
+            .update({ comment, rating, grade, workload })
+            .eq('rating_id', rating_id)
+            .eq('user_id', req.session.user.id);
+
+        if (error) {
+            console.error('Error updating rating:', error);
+            return res.status(500).send('Failed to update rating.');
+        }
+
+        res.redirect('/profile/history'); // Redirect to the history page
+    } catch (error) {
+        console.error('Unexpected error updating rating:', error);
+        res.status(500).send('Failed to update rating.');
     }
 });
 

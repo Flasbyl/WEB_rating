@@ -24,6 +24,7 @@ html
         block mainContent
 
     // Global scripts loaded for all pages
+    script(src="/scripts/translations.js")
     script.
       document.addEventListener('DOMContentLoaded', function () {
         const toggleThemeButton = document.querySelector('.toggle-theme');
@@ -142,16 +143,34 @@ extends base_profile
 
 block mainContent
   h1 Rating History
-  ul
-    each rating in ratings
-      li
-        p Module: #{rating.module_name}
-        p Professor: #{rating.professor_name}
-        p Rating: #{rating.rating}
-        p Comment: #{rating.comment}
-        p Semester: #{rating.semester}
-        p Date: #{rating.created_at}
+  div#historyCommentsContainer
 
+  // Modal for editing comments
+  div#editModal.modal(style="display: none;")
+    span.close &times;
+    div.modal-content
+      h2 Edit Rating
+      form#editForm(action="/profile/history/edit" method="POST")
+        input(type="hidden" name="rating_id" id="editRatingId")
+        label(for="editComment") Comment:
+        textarea#editComment(name="comment" required=true)
+        label(for="editRating") Rating:
+        select#editRating(name="rating" required=true)
+          each value in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            option(value=value) #{value}
+        label(for="editGrade") Grade:
+        select#editGrade(name="grade")
+          option(value="") Select Grade
+          each grade in {6.0: 'A', 5.5: 'B', 5.0: 'C', 4.5: 'D', 4.0: 'E', 3.5: 'Failed'}
+            option(value=grade[0]) #{grade[1]}
+        label(for="editWorkload") Workload:
+        select#editWorkload(name="workload")
+          each workload in {1: 'Walk in the Park', 2: 'Manageable', 3: 'Moderate Effort', 4: 'Challenging', 5: 'Pain and Suffering'}
+            option(value=workload[0]) #{workload[1]}
+        button(type="submit") Save Changes
+
+block scripts
+    script(src='/scripts/profile.js')
 ----------------------------------------
 Filename: home.pug
 Content:
@@ -218,7 +237,18 @@ block sidebarContent
       button(type="submit") Submit Rating
 
 block mainContent
-  canvas#ratingChart(width='800', height='400')
+  canvas#ratingChart(width='800', height='225')
+
+  // Comment Section
+  div.comment-section
+    h2 Comments
+    button#loadCommentsButton Load Comments
+    div#commentsContainer
+
+  // Hidden fields for IDs
+  input(type='hidden', id='prof_id_hidden', value=selectedProfIdValue || '')
+  input(type='hidden', id='module_id_hidden', value=selectedModuleIdValue || '')
+
 
   // Button to open sliding panel or modal
   button.menu__toggler(type="button" id="openPanelButton") Post

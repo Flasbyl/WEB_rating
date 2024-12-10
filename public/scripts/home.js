@@ -5,9 +5,11 @@ let originalOptions = {
 };
 
 document.addEventListener('DOMContentLoaded', function () {
+    console.log('Eventlistnener loadSemester triggered');
     loadSemester();
 });
 document.addEventListener('DOMContentLoaded', function () {
+    console.log('Eventlistener Modal triggered');
     const toggler = document.querySelector('.menu__toggler');
     const loginModal = document.getElementById('loginModal');
     const closeModalButton = loginModal.querySelector('.close');
@@ -37,8 +39,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 document.addEventListener('DOMContentLoaded', function () {
+    console.log('Eventlistener Comments triggered');
     const loadCommentsButton = document.getElementById('loadCommentsButton');
     const commentsContainer = document.getElementById('commentsContainer');
+    console.log('Comments loading: ', loadCommentsButton, commentsContainer);
 
     if (loadCommentsButton && commentsContainer) {
         loadCommentsButton.addEventListener('click', function () {
@@ -54,6 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .get(`/comments?prof_id_hidden=${profId}&module_id_hidden=${moduleId}`)
                 .then((response) => {
                     const comments = response.data;
+                    console.log('comment data: ', comments);
 
                     if (comments.length === 0) {
                         commentsContainer.innerHTML = '<p>No comments available for this selection.</p>';
@@ -63,6 +68,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     commentsContainer.innerHTML = ''; // Clear existing comments
 
                     comments.forEach((comment) => {
+                        // Translations for grade, workload, and semester
+                        const gradeTranslation =
+                            window.gradeTranslations[comment.grade] || 'N/A';
+                        const workloadTranslation =
+                            window.workloadTranslations[comment.workload] || 'N/A';
+                        const semesterTranslation =
+                            window.translateSemester(comment.sem_id);
+                        console.log('sem_id passed to translation:', comment.sem_id);
+                        console.log('output from translatoin: ', semesterTranslation);
+
                         // Create comment tile
                         const commentTile = document.createElement('div');
                         commentTile.style.display = 'flex';
@@ -111,14 +126,19 @@ document.addEventListener('DOMContentLoaded', function () {
                         details.style.fontSize = '0.9rem';
                         details.style.color = '#666';
 
+                        const semester = document.createElement('span');
+                        semester.textContent = `Semester: ${semesterTranslation}`;
+
                         const grade = document.createElement('span');
-                        grade.textContent = `Grade: ${comment.grade || 'N/A'}`;
+                        grade.textContent = `Grade: ${gradeTranslation}`;
 
                         const workload = document.createElement('span');
-                        workload.textContent = `Workload: ${comment.workload || 'N/A'}`;
+                        workload.textContent = `Workload: ${workloadTranslation}`;
 
-                        details.appendChild(grade);
+                        details.appendChild(semester);
                         details.appendChild(document.createElement('br')); // Line break for spacing
+                        details.appendChild(grade);
+                        details.appendChild(document.createElement('br'));
                         details.appendChild(workload);
 
                         // Append everything to the comment tile
@@ -132,13 +152,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .catch((error) => {
                     console.error('Error loading comments:', error);
-                    commentsContainer.innerHTML = '<p>Failed to load comments. Please try again later.</p>';
+                    commentsContainer.innerHTML =
+                        '<p>Failed to load comments. Please try again later.</p>';
                 });
         });
     }
 });
 
 function toggleSelection() {
+    console.log('toggleSelection triggered');
     const category = document.getElementById('categorySelector').value;
     if (!category) return;
 
@@ -160,6 +182,7 @@ function toggleSelection() {
 }
 
 function updateSecondDropdown() {
+    console.log('updateSecondDropdown triggered');
     const firstDropdown = document.getElementById('firstDropdown');
     const selectedId = firstDropdown.value;
     if (!selectedId) return;
@@ -185,6 +208,7 @@ function updateSecondDropdown() {
 }
 
 function filterDropdown(dropdownId, searchTerm) {
+    console.log('filterDropdown triggered');
     const dropdown = document.getElementById(dropdownId);
     const originalList = originalOptions[dropdownId];
     const filteredList = originalList.filter((item) =>
@@ -199,6 +223,7 @@ function filterDropdown(dropdownId, searchTerm) {
 }
 
 function loadChart() {
+    console.log('loadChart triggered');
     const category = document.getElementById('categorySelector').value;
     const firstId = document.getElementById('firstDropdown').value;
     const secondId = document.getElementById('secondDropdown').value;
@@ -280,6 +305,7 @@ function loadChart() {
 }
 
 function loadSemester() {
+    console.log('loadSemester2 triggered');
     axios
         .get('/semester')
         .then(function (response) {
@@ -306,6 +332,7 @@ function loadSemester() {
 
 // Cookie Helper Functions
 function setCookie(name, value, days) {
+    console.log('setCookie triggered');
     const date = new Date();
     date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
     const expires = "expires=" + date.toUTCString();
@@ -313,6 +340,7 @@ function setCookie(name, value, days) {
 }
 
 function getCookie(name) {
+    console.log('getCookie triggered');
     const decodedCookie = decodeURIComponent(document.cookie);
     const cookies = decodedCookie.split(';');
     for (let i = 0; i < cookies.length; i++) {
@@ -339,6 +367,7 @@ document.getElementById('secondDropdown').addEventListener('change', function ()
 
 // Restore dropdown selections on page load
 document.addEventListener('DOMContentLoaded', function () {
+    console.log('Eventlistener persistent dropdowns triggered');
     const category = getCookie('categorySelector');
     const first = getCookie('firstDropdown');
     const second = getCookie('secondDropdown');
@@ -370,6 +399,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Update toggleSelection to return a Promise
 function toggleSelection() {
+    console.log('toggleSelection2 triggered');
     const category = document.getElementById('categorySelector').value;
     if (!category) return Promise.resolve();
 
@@ -392,6 +422,7 @@ function toggleSelection() {
 
 // Update updateSecondDropdown to return a Promise
 function updateSecondDropdown() {
+    console.log('updateSecondDropdown2 triggered');
     const firstDropdown = document.getElementById('firstDropdown');
     const selectedId = firstDropdown.value;
     if (!selectedId) return Promise.resolve();

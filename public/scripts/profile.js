@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', () => {
     const historyCommentsContainer = document.getElementById('historyCommentsContainer');
     if (historyCommentsContainer) {
@@ -7,69 +6,96 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadUserHistory() {
+    const historyCommentsContainer = document.getElementById('historyCommentsContainer');
+
+    if (!historyCommentsContainer) return;
+    console.log('loadUserHistory loaded');
+
     axios
-        .get('/profile/history')
+        .get('/profile/history/data')
         .then((response) => {
             const comments = response.data;
-
-            // Clear existing comments
-            const historyCommentsContainer = document.getElementById('historyCommentsContainer');
-            historyCommentsContainer.innerHTML = '';
+            console.log('comment data: ', comments);
 
             if (comments.length === 0) {
-                historyCommentsContainer.innerHTML = '<p>No ratings found in your history.</p>';
+                historyCommentsContainer.innerHTML =
+                    '<p>No history available for this user.</p>';
                 return;
             }
 
+            historyCommentsContainer.innerHTML = ''; // Clear existing history
             comments.forEach((comment) => {
+                // Translations for grade, workload, and semester
+                const gradeTranslation =
+                    window.gradeTranslations[comment.grade] || 'N/A';
+                const workloadTranslation =
+                    window.workloadTranslations[comment.workload] || 'N/A';
+                const semesterTranslation =
+                    window.translateSemester(comment.sem_id);
+
                 const commentTile = document.createElement('div');
                 commentTile.classList.add('comment-tile');
                 commentTile.innerHTML = `
-                    <div class="comment-header">
+                    <div class="rating-header">
                         <span class="rating">Rating: ${comment.rating}</span>
+                        <span class="semester">Semester: ${semesterTranslation}</span>
                     </div>
-                    <div class="comment-header">
+                    <div class="date-header">
                         <span class="date">${new Date(comment.created_at).toLocaleDateString()}</span>
                     </div>
-                    <p class="comment-text">${comment.comment}</p>
-                    <div class="comment-details">
-                        <span>Grade: ${comment.grade || 'N/A'}</span>
-                        <span>Workload: ${comment.workload || 'N/A'}</span>
-                        <span>Prof: ${comment.prof_id || 'N/A'}</span>
-                        <span>Module: ${comment.module_id || 'N/A'}</span>
+                    <p class="comment">${comment.comment}</p>
+                    <div class="grade-footer">
+                        <span class="grade">Grade: ${gradeTranslation}</span>
                     </div>
-                    <button class="edit-comment-button" data-id="${comment.rating_id}" data-comment="${comment.comment}" data-rating="${comment.rating}" data-grade="${comment.grade}" data-workload="${comment.workload}">Edit</button>
+                    <div class="workload-footer">
+                        <span class="workload">Workload: ${workloadTranslation}</span>
+                    </div>
+                    <button class="edit-button" data-rating-id="${comment.rating_id}">Edit</button>
                 `;
                 historyCommentsContainer.appendChild(commentTile);
             });
 
-            attachEditButtons(); // Add event listeners to edit buttons
+            // Add event listeners to edit buttons
+            addEditListeners();
         })
         .catch((error) => {
-            console.error('Error loading user ratings history:', error);
-            document.getElementById('historyCommentsContainer').innerHTML = '<p>Failed to load your ratings history.</p>';
+            console.error('Error loading user history:', error);
+            historyCommentsContainer.innerHTML =
+                '<p>Failed to load history. Please try again later.</p>';
         });
 }
 
-function attachEditButtons() {
-    const editButtons = document.querySelectorAll('.edit-comment-button');
-
+function addEditListeners() {
+    const editButtons = document.querySelectorAll('.edit-button');
     editButtons.forEach((button) => {
-        button.addEventListener('click', (event) => {
-            const { id, comment, rating, grade, workload } = event.target.dataset;
-
-            // Populate modal fields with existing data
-            const editModal = document.getElementById('editModal');
-            editModal.querySelector('#editComment').value = comment;
-            editModal.querySelector('#editRating').value = rating;
-            editModal.querySelector('#editGrade').value = grade || '';
-            editModal.querySelector('#editWorkload').value = workload || '';
-            editModal.dataset.id = id; // Store rating_id for submission
-            editModal.style.display = 'block';
+        button.addEventListener('click', function () {
+            const ratingId = this.getAttribute('data-rating-id');
+            openEditModal(ratingId);
         });
     });
 }
 
+function openEditModal(ratingId) {
+    axios
+        .get(`/profile/history/${ratingId}`)
+        .then((response) => {
+            const rating = response.data;
+
+            document.getElementById('editRatingId').value = rating.rating_id;
+            document.getElementById('editComment').value = rating.comment;
+            document.getElementById('editRating').value = rating.rating || '';
+            document.getElementById('editGrade').value = rating.grade || '';
+            document.getElementById('editWorkload').value = rating.workload || '';
+
+            const editModal = document.getElementById('editModal');
+            editModal.style.display = 'block';
+        })
+        .catch((error) => {
+            console.error('Error fetching rating data:', error);
+        });
+}
+
+// Close modal functionality
 document.addEventListener('DOMContentLoaded', function () {
     const editModal = document.getElementById('editModal');
     const closeModalButton = editModal?.querySelector('.close');
@@ -87,35 +113,4 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-
-    // Function to open the modal and populate fields
-    function openEditModal(rating) {
-        const { rating_id, comment, rating: ratingValue, grade, workload } = rating;
-
-        document.getElementById('editRatingId').value = rating_id;
-        document.getElementById('editComment').value = comment;
-        document.getElementById('editRating').value = ratingValue || '';
-        document.getElementById('editGrade').value = grade || '';
-        document.getElementById('editWorkload').value = workload || '';
-
-        editModal.style.display = 'block';
-    }
-
-    // Add click event listeners for edit buttons (assuming they are already rendered)
-    document.querySelectorAll('.edit-button').forEach((button) => {
-        button.addEventListener('click', (event) => {
-            const ratingId = event.target.getAttribute('data-id');
-            
-            // Fetch the specific rating data and populate the modal
-            axios
-                .get(`/profile/history/${ratingId}`)
-                .then((response) => {
-                    const rating = response.data;
-                    openEditModal(rating);
-                })
-                .catch((error) => {
-                    console.error('Error fetching rating data:', error);
-                });
-        });
-    });
 });
